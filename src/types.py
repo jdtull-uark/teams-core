@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 import uuid
+import random
 
 # =============================================================================
 # ENUMS AND DATA CLASSES
@@ -13,6 +14,16 @@ class TaskStatus(Enum):
     BACKLOG = "backlog"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+    BLOCKED = "blocked"
+
+class InteractionType(Enum): # NEW: Define types of interactions
+    COLLABORATION = "collaboration"
+    HELP_REQUEST = "help_request"
+    HELP_OFFER = "help_offer"
+    KNOWLEDGE_SHARE = "knowledge_share"
+    DISCUSSION = "discussion"
+    FEEDBACK = "feedback"
+    # Add more as needed
 
 @dataclass
 class Task:
@@ -20,4 +31,10 @@ class Task:
     name: str = ""
     status: TaskStatus = TaskStatus.BACKLOG
     assigned_to: Optional[str] = None
-    # TODO: Add task attributes. 
+    difficulty: int = field(default_factory=lambda: random.randint(1, 10))
+    remaining_work: int = field(default_factory=lambda: 0)
+    dependencies: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.remaining_work == 0:
+            self.remaining_work = self.difficulty * 10
