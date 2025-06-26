@@ -7,7 +7,7 @@ class BaseAgent(mesa.Agent):
     
     def __init__(self, unique_id: int, model: 'EngineeringTeamModel'):
         super().__init__(unique_id, model)
-        # TODO: Add attributes dict, history logging, etc.
+        # TODO: Add attributes
         
     def step(self):
         """Standard Mesa step function."""
