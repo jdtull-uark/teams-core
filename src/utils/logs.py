@@ -1,1 +1,1 @@
-print('New log')
+print("New log - Jeremy's version")
