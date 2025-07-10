@@ -16,14 +16,13 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
     BLOCKED = "blocked"
 
-class InteractionType(Enum): # NEW: Define types of interactions
+class InteractionType(Enum):
     COLLABORATION = "collaboration"
     HELP_REQUEST = "help_request"
     HELP_OFFER = "help_offer"
     KNOWLEDGE_SHARE = "knowledge_share"
     DISCUSSION = "discussion"
     FEEDBACK = "feedback"
-    # Add more as needed
 
 @dataclass
 class Task:

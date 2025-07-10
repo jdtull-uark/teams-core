@@ -1,7 +1,10 @@
 from .base import BaseAgent
 from .engineer import EngineerAgent
-from ..types import TaskStatus
-from ..model import EngineeringTeamModel
+from ..types import TaskStatus # Note: InteractionType is not imported here for minimal setup.
+from typing import TYPE_CHECKING # NEW: Import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..model import EngineeringTeamModel
 
 class ManagerAgent(BaseAgent):
     """Represents a team manager who assigns tasks."""
@@ -14,7 +17,7 @@ class ManagerAgent(BaseAgent):
         """Assign available tasks to engineers."""
         available_tasks = [t for t in self.model.tasks.values() 
                           if t.status == TaskStatus.BACKLOG]
-        available_engineers = [a for a in self.model.schedule.agents 
+        available_engineers = [a for a in self.model.agents 
                              if isinstance(a, EngineerAgent) and a.current_task is None]
         
         # Simple assignment: first available task to first available engineer

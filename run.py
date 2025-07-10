@@ -1,30 +1,43 @@
-# Example script to run the simulation
-
+import matplotlib.pyplot as plt # Import for displaying plots
 from src.model import EngineeringTeamModel
-
-def run_basic_simulation(steps: int = 20):
-    """Run a basic simulation and return the model."""
-    model = EngineeringTeamModel()
-    
-    print(f"Starting simulation with {model.num_engineers} engineers, {model.num_managers} managers")
-    print(f"Initial tasks: {len(model.tasks)}")
-    
-    for i in range(steps):
-        model.step()
-        completed = len([t for t in model.tasks.values() if t.status.value == "completed"])
-        active = len([t for t in model.tasks.values() if t.status.value == "in_progress"])
-        
-        if i % 5 == 0:
-            print(f"Step {i}: {completed} completed, {active} active")
-    
-    return model
+from src.utils.analysis import analyze_results
+from src.types import TaskStatus
 
 if __name__ == "__main__":
-    print("Running basic engineering team simulation...")
-    model = run_basic_simulation()
-    
-    # Final results
-    df = model.datacollector.get_model_vars_dataframe()
-    print(f"\nFinal results:")
-    print(f"Completed tasks: {df['Completed_Tasks'].iloc[-1]}")
-    print(f"Active tasks: {df['Active_Tasks'].iloc[-1]}")
+    print("Starting Engineering Team Simulation...")
+
+    # Define model parameters
+    num_engineers = 5
+    num_managers = 1
+    initial_tasks = 15
+    initial_psych_safety = 0.5
+    psych_safety_threshold = 0.7
+    num_steps = 200 # Number of simulation steps
+
+    # Instantiate the model
+    model = EngineeringTeamModel(
+        num_engineers=num_engineers,
+        num_managers=num_managers,
+        initial_tasks=initial_tasks,
+        initial_psych_safety=initial_psych_safety,
+        psych_safety_threshold=psych_safety_threshold
+    )
+
+    print(f"Model initialized with {num_engineers} engineers, {num_managers} managers.")
+    print(f"Initial tasks: {len(model.tasks)}. Initial Psych Safety: {model.psychological_safety:.2f}")
+
+    # Run the model for the specified number of steps
+    for i in range(num_steps):
+        model.step()
+        # Optional: Print progress
+        if (i + 1) % 20 == 0 or i == num_steps - 1:
+            completed = len([t for t in model.tasks.values() if t.status == TaskStatus.COMPLETED])
+            print(f"Step {i+1}/{num_steps} | Completed Tasks: {completed} | Psych Safety: {model.psychological_safety:.2f}")
+            
+    print("\nSimulation Finished.")
+
+    # Analyze and visualize results
+    analyze_results(model)
+
+    # Keep plots open until user closes them
+    plt.show()

@@ -1,7 +1,10 @@
-from typing import List, Optional
-from ..types import Task, TaskStatus
+from typing import List, Optional, Dict, Any, TYPE_CHECKING # NEW: Import TYPE_CHECKING
+from ..types import Task, TaskStatus 
 from .base import BaseAgent
-from ..model import EngineeringTeamModel
+import random
+
+if TYPE_CHECKING:
+    from ..model import EngineeringTeamModel
 
 class EngineerAgent(BaseAgent):
     """Represents an individual engineer."""
@@ -34,4 +37,4 @@ class EngineerAgent(BaseAgent):
         """Engineer step behavior."""
         if self.current_task:
             self.work_on_task()
-        # TODO: Add collaboration, skill development, etc.
+        # TODO: Add collaboration
