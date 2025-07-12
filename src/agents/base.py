@@ -19,7 +19,7 @@ class BaseAgent(mesa.Agent):
             log_entry.update(details)
         self.history.append(log_entry)
         
-    def initiate_interaction(self, recipient_agent: 'BaseAgent', interaction_type: Any, details: Dict[str, Any] = None) -> bool: # interaction_type needs proper import or Any
+    def initiate_interaction(self, recipient_agent: 'BaseAgent', interaction_type: Any, details: Dict[str, Any] = None) -> bool:
         """
         Initiates an interaction with another agent.
         This method itself doesn't check psychological safety; the calling agent decides based on its own state.
@@ -28,7 +28,7 @@ class BaseAgent(mesa.Agent):
         
         if recipient_agent:
             self._log_history("initiate_interaction", {
-                "type": str(interaction_type), # Cast to string since it's not a proper enum without types.py changes
+                "type": str(interaction_type),
                 "recipient": recipient_agent.unique_id,
                 "details": details
             })
