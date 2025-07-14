@@ -41,3 +41,4 @@ if __name__ == "__main__":
 
     # Keep plots open until user closes them
     plt.show()
+

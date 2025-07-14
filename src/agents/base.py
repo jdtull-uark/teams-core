@@ -1,4 +1,5 @@
 import mesa
+import random
 from typing import Any, Dict, List, TYPE_CHECKING # NEW: Import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -11,10 +12,11 @@ class BaseAgent(mesa.Agent):
         super().__init__(model)
         self.attributes: Dict[str, Any] = {}
         self.history: List[Dict[str, Any]] = []
+        self.agent_id = unique_id
 
     def _log_history(self, action: str, details: Dict[str, Any] = None):
         """Logs an action taken by the agent."""
-        log_entry = {"step": self.model.schedule.steps, "action": action}
+        log_entry = {"step": self.model.steps, "action": action}
         if details:
             log_entry.update(details)
         self.history.append(log_entry)
@@ -25,8 +27,13 @@ class BaseAgent(mesa.Agent):
         This method itself doesn't check psychological safety; the calling agent decides based on its own state.
         Returns True if the interaction was successfully initiated (i.e., logged and sent), False otherwise.
         """
-        
+
         if recipient_agent:
+            if details is None:
+                details = {}
+            if "interaction_duration" not in details:
+                details["interaction_duration"] = random.uniform(0.5, 10)
+
             self._log_history("initiate_interaction", {
                 "type": str(interaction_type),
                 "recipient": recipient_agent.unique_id,
@@ -40,6 +47,7 @@ class BaseAgent(mesa.Agent):
                 "details": details
             })
             return False
+
 
     def receive_interaction(self, sender_agent: 'BaseAgent', interaction_type: Any, details: Dict[str, Any] = None):
         """
