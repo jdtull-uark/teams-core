@@ -21,7 +21,6 @@ class InteractionType(Enum):
     HELP_REQUEST = "help_request"
     HELP_OFFER = "help_offer"
     KNOWLEDGE_SHARE = "knowledge_share"
-    DISCUSSION = "discussion"
     FEEDBACK = "feedback"
 
 @dataclass

@@ -17,9 +17,21 @@ class EngineerAgent(BaseAgent):
         self.current_task: Optional[Task] = None
         self.completed_tasks: List[str] = []
         
-        self.pps: float = random.uniform(0.0, 1.0)
-        self.cps: float = random.uniform(-1.0, 1.0)
-        self.knowledge: float = random.uniform(0.0, 1)
+        self.pps: float = random.uniform(0.0, 1.0) # perceived psychological safety
+        self.cps: float = random.uniform(-1.0, 1.0) # contributed psychological safety
+        self.knowledge: float = random.uniform(0.0, 1) # knowledge level
+
+        self.learning_rate: float = random.uniform(0.01, 0.1)  # Rate at which knowledge increases
+        self.communication_skill: float = random.uniform(0.1, 1.0)  # Communication skill (0.1 to 1.0)
+
+        self.motivation: float = random.uniform(0.1, 1.0)  # Motivation level (0.5 to 1.0)        
+        self.availability: float = random.uniform(0.5, 1.0)  # Availability for tasks (0.5 to 1.0)
+
+
+        self.knowledge_concepts: List[str] = []  # Concepts the engineer is familiar with
+        self.knowledge_network: Dict[str, List[str]] = {}  # { "Agent01" : ["K001", "K002", "K003"], }
+
+        
 
         
     def work_on_task(self):

@@ -29,6 +29,8 @@ class EngineeringTeamModel(mesa.Model):
         
         # Instantiate rules
         self.psychological_safety_rule = PsychologicalSafetyRule(self) # The model instantiates the rule
+
+        self._create_knowledge_space()
         
         # Task management
         self.tasks: Dict[str, Task] = {}
@@ -84,18 +86,39 @@ class EngineeringTeamModel(mesa.Model):
             self.grid.place_agent(agent, (x, y))
 
             agent_id += 1
-        
-        # # Create managers
-        # for i in range(self.num_managers):
-        #     agent = ManagerAgent(agent_id, self)
-        #     self.agents.add(agent)
-        #     agent_id += 1
-            
+
+    def _create_knowledge_space(self, size: int = 20):
+        """Create knowledge sets for the model."""
+
+        self.knowledge_space = [f"K{"0"*(len(str(size)) - len(str(i)))}{i}" for i in range(1, size)]
+        print(f"Knowledge space created with {len(self.knowledge_space)} knowledge items. Formatted as {next(iter(self.knowledge_space))}")
+
     def _create_initial_tasks(self, num_tasks: int):
         """Create initial set of tasks."""
         for i in range(num_tasks):
-            task = Task(name=f"Task {i+1}")
+            difficulty = random.randint(1, 10)
+
+            dependencies = random.sample(self.knowledge_space, k=difficulty) if self.knowledge_space else []
+
+            task = Task(name=f"Task {i+1}", dependencies=dependencies, difficulty=difficulty)
             self.tasks[task.id] = task
+
+    def _create_subtasks(self, task: Task, num_subtasks: int):
+        """Create subtasks for a given task."""
+        for i in range(num_subtasks):
+            subtask = Task(name=f"{task.name} {i+1}", dependencies=task.dependencies, difficulty=task.difficulty)
+            self.tasks[subtask.id] = subtask
+
+    def _assign_initial_tasks(self):
+        """Assign initial tasks to engineers."""
+        for task in self.tasks.values():
+            if task.status == TaskStatus.BACKLOG:
+                # Randomly assign to an engineer
+                engineer = self.random.choice([a for a in self.agents if isinstance(a, EngineerAgent)])
+                task.assigned_to = engineer.agent_id
+                task.status = TaskStatus.IN_PROGRESS
+                engineer.current_task = task
+                print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
 
     def _generate_new_task(self):
         """Generates a new task occasionally."""
