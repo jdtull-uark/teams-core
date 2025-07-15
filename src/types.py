@@ -16,6 +16,13 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
     BLOCKED = "blocked"
 
+class SubTaskStatus(Enum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    IN_PROGRESS = "in_progress"
+    WORKING = "working"
+    LEARNING = "learning"
+
 class InteractionType(Enum):
     COLLABORATION = "collaboration"
     HELP_REQUEST = "help_request"
@@ -30,9 +37,20 @@ class Task:
     status: TaskStatus = TaskStatus.BACKLOG
     assigned_to: Optional[str] = None
     difficulty: int = field(default_factory=lambda: random.randint(1, 10))
-    remaining_work: int = field(default_factory=lambda: 0)
-    dependencies: List[str] = field(default_factory=list)
+    subtasks: List['SubTask'] = field(default_factory=list)
 
     def __post_init__(self):
         if self.remaining_work == 0:
             self.remaining_work = self.difficulty * 10
+
+@dataclass
+class SubTask:
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = ""
+    status: TaskStatus = TaskStatus.BACKLOG
+    assigned_to: Optional[str] = None
+    dependencies: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.remaining_work == 0:
+            self.remaining_work = 5

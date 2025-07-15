@@ -2,7 +2,7 @@ import mesa
 import random
 from statistics import mean
 from typing import Dict
-from .types import Task, TaskStatus
+from .types import Task, TaskStatus, SubTask, SubTaskStatus
 from .agents import EngineerAgent, ManagerAgent
 from .rules import PsychologicalSafetyRule
 
@@ -98,15 +98,21 @@ class EngineeringTeamModel(mesa.Model):
         for i in range(num_tasks):
             difficulty = random.randint(1, 10)
 
-            dependencies = random.sample(self.knowledge_space, k=difficulty) if self.knowledge_space else []
+            task = Task(name=f"Task {i+1}", difficulty=difficulty)
 
-            task = Task(name=f"Task {i+1}", dependencies=dependencies, difficulty=difficulty)
+            self._create_subtasks(task, num_subtasks=difficulty)
+
             self.tasks[task.id] = task
 
     def _create_subtasks(self, task: Task, num_subtasks: int):
         """Create subtasks for a given task."""
+        
+        difficulty = random.randint(1, 10)
+
+        dependencies = random.sample(self.knowledge_space, k=difficulty) if self.knowledge_space else []
+        
         for i in range(num_subtasks):
-            subtask = Task(name=f"{task.name} {i+1}", dependencies=task.dependencies, difficulty=task.difficulty)
+            subtask = SubTask(name=f"{task.name} {i+1}", dependencies=dependencies, difficulty=difficulty)
             self.tasks[subtask.id] = subtask
 
     def _assign_initial_tasks(self):
