@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any, TYPE_CHECKING # NEW: Import TYPE_CHECKING
 from ..types import Task, TaskStatus, InteractionType
 from .base import BaseAgent
+from ..rules.psychological_safety_rule import PsychologicalSafetyRule
 import random
 import math
 
@@ -61,6 +62,7 @@ class EngineerAgent(BaseAgent):
 
 
     def process_interaction(self, other_agent: 'EngineerAgent', interaction_type: Any = None, speaking_percentage: int = 0,  details: Dict[str, Any] = None):
+        
         if self.knowledge < other_agent.knowledge:
             self.knowledge += 0.05 * details.get("interaction_duration", 0)
 
@@ -77,9 +79,10 @@ class EngineerAgent(BaseAgent):
 
 
     def initiate_interaction(self, recipient_agent, interaction_type: Any, details: Dict[str, Any] = None):
-        super().initiate_interaction(recipient_agent, interaction_type, details)
+        if ( (self.pps + recipient_agent.pps) / 2) >= self.model.psychological_safety_threshold:
+            super().initiate_interaction(recipient_agent, interaction_type, details)
 
-        self.process_interaction(recipient_agent, speaking_percentage = details["sender_speaking_percentage"], details = details)
+            self.process_interaction(recipient_agent, speaking_percentage = details["sender_speaking_percentage"], details = details)
     
     def update_cps(self):
         # Normalize PPS from [0, 1] to [-1, 1]

@@ -8,25 +8,6 @@ from .rules import PsychologicalSafetyRule
 
 class EngineeringTeamModel(mesa.Model):
     """Main model class for the engineering team simulation."""
-
-    datacollector = mesa.DataCollector(
-        model_reporters={
-            "Completed_Tasks": lambda m: len([t for t in m.tasks.values() 
-                                                if t.status == TaskStatus.COMPLETED]),
-            "Active_Tasks": lambda m: len([t for t in m.tasks.values() 
-                                            if t.status == TaskStatus.IN_PROGRESS]),
-            "Backlog_Tasks": lambda m: len([t for t in m.tasks.values()
-                                            if t.status == TaskStatus.BACKLOG]),
-            "Total_Tasks_Created": lambda m: len(m.tasks),
-            "Psychological_Safety": "psychological_safety",
-            "Average_PPS": lambda m: mean([a.pps for a in m.agents if hasattr(a, "pps")]),
-            "Average_knowledge" : lambda m: mean([a.knowledge for a in m.agents if hasattr(a, "knowledge")])
-        },
-        agent_reporters={
-            "PPS": lambda a: a.pps if hasattr(a, "pps") else None
-        }
-
-    )
     
     def __init__(self, num_steps: int = 100, num_engineers: int = 5, num_managers: int = 0, initial_tasks: int = 10,
                  initial_psych_safety: float = 0.5, psych_safety_threshold: float = 0.7):
@@ -43,8 +24,8 @@ class EngineeringTeamModel(mesa.Model):
         self.base_work_units_per_step = 1.0
         
         # Psychological Safety attributes (needed for the rule to evaluate)
-        self.psychological_safety: float = initial_psych_safety 
-        self.psychological_safety_threshold: float = psych_safety_threshold 
+        self.psychological_safety = initial_psych_safety 
+        self.psychological_safety_threshold = psych_safety_threshold 
         
         # Instantiate rules
         self.psychological_safety_rule = PsychologicalSafetyRule(self) # The model instantiates the rule
@@ -59,13 +40,36 @@ class EngineeringTeamModel(mesa.Model):
         self._create_initial_tasks(self.initial_tasks)
         
         # Basic data collection
-        self.datacollector = self.__class__.datacollector
+        self.datacollector = mesa.DataCollector(
+            model_reporters={
+                "Completed_Tasks": lambda m: len([t for t in m.tasks.values() 
+                                                    if t.status == TaskStatus.COMPLETED]),
+                "Active_Tasks": lambda m: len([t for t in m.tasks.values() 
+                                                if t.status == TaskStatus.IN_PROGRESS]),
+                "Backlog_Tasks": lambda m: len([t for t in m.tasks.values()
+                                                if t.status == TaskStatus.BACKLOG]),
+                "Total_Tasks_Created": lambda m: len(m.tasks),
+                "Psychological_Safety": "psychological_safety",
+                "Average_PPS": lambda m: mean([a.pps for a in m.agents if hasattr(a, "pps")]),
+                "Average_knowledge" : lambda m: mean([a.knowledge for a in m.agents if hasattr(a, "knowledge")])
+            },
+            agent_reporters={
+                "PPS": lambda a: a.pps if hasattr(a, "pps") else None
+            }
+        )
+
         # Collect initial state
         self.datacollector.collect(self)
         
+        print('\n')
+        print(40*'-')
         print(f"Model initialized with {self.num_engineers} engineers, {self.num_managers} managers.")
+        print(f"Psychological safety threshold: {self.psychological_safety_threshold}")
         print(f"Initial tasks: {len(self.tasks)}. Initial Psych Safety: {self.psychological_safety:.2f}")
         print(f"Collecting the following data: {self.datacollector.get_model_vars_dataframe().columns}")
+        print(f"Number of simulation steps to complete: {self.num_steps}")
+        print(40*'-')
+        print('\n')
 
     def _create_agents(self):
         """Create engineer and manager agents."""
@@ -99,7 +103,7 @@ class EngineeringTeamModel(mesa.Model):
         
     def step(self):
         """Execute one step of the model."""
-        if self.steps == self.num_steps:
+        if self.steps >= self.num_steps:
             self.running = False
                
         # Step all agents
@@ -107,6 +111,7 @@ class EngineeringTeamModel(mesa.Model):
 
         # Collect data
         self.datacollector.collect(self)
+
 
 
     def is_done(self):

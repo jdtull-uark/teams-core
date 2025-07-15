@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..model import EngineeringTeamModel
+    from ..agents import EngineerAgent, ManagerAgent
 
 class PsychologicalSafetyRule(BaseRule):
     """
@@ -12,15 +13,15 @@ class PsychologicalSafetyRule(BaseRule):
     
     def __init__(self, model: 'EngineeringTeamModel', name: str = "PsychologicalSafetyRule"):
         super().__init__(model, name)
-        # This rule interacts with the model's psychological_safety and psychological_safety_threshold attributes.
         
-    def evaluate(self, context: Any = None) -> bool:
+    def evaluate(self, agent_one: 'EngineerAgent' = None, agent_two: 'EngineerAgent' = None, context: Any = None) -> bool:
         """
         Evaluates if the psychological safety condition for collaboration is met.
-        For now, it simply checks the model's global psychological safety.
         """
-        # The rule checks the model's overall psychological safety
-        return self.model.psychological_safety >= self.model.psychological_safety_threshold
+        if agent_one and agent_two:
+            return ( (agent_one.pps + agent_two.pps) / 2) >= self.model.psychological_safety_threshold
+        else:
+            return self.model.psychological_safety
 
     def get_collaboration_factor(self, context: Any = None) -> float:
         """
