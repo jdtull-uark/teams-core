@@ -39,9 +39,9 @@ class Task:
     difficulty: int = field(default_factory=lambda: random.randint(1, 10))
     subtasks: List['SubTask'] = field(default_factory=list)
 
-    def __post_init__(self):
-        if self.remaining_work == 0:
-            self.remaining_work = self.difficulty * 10
+    def get_progress(self) -> float:
+        completed_subtasks = len([task for task in self.subtasks if task.status == "completed"])
+        return completed_subtasks / self.difficulty
 
 @dataclass
 class SubTask:
@@ -50,7 +50,18 @@ class SubTask:
     status: TaskStatus = TaskStatus.BACKLOG
     assigned_to: Optional[str] = None
     dependencies: List[str] = field(default_factory=list)
+    required_knowledge: List[str] = field(default_factory=list)
+    progress: float = 0.0
 
-    def __post_init__(self):
-        if self.remaining_work == 0:
-            self.remaining_work = 5
+    def can_start(self, completed_subtasks: List[str]) -> bool:
+        return all(dep_id in completed_subtasks for dep_id in self.dependencies)
+    
+@dataclass
+class InteractionRecord:
+    """Records details of an interaction between agents."""
+    timestamp: int
+    initiator_id: str
+    recipient_id: str
+    interaction_type: InteractionType
+    duration: float
+    knowledge_shared: List[str] = field(default_factory=list)
