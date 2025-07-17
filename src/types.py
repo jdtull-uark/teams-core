@@ -27,6 +27,7 @@ class InteractionType(Enum):
     COLLABORATION = "collaboration"
     HELP_REQUEST = "help_request"
     HELP_OFFER = "help_offer"
+    KNOWLEDGE_REQUEST = "knowledge_request"
     KNOWLEDGE_SHARE = "knowledge_share"
     FEEDBACK = "feedback"
 
@@ -51,6 +52,9 @@ class SubTask:
     assigned_to: Optional[str] = None
     dependencies: List[str] = field(default_factory=list)
     required_knowledge: List[str] = field(default_factory=list)
+    required_steps: int = 0
+    difficulty: int = field(default_factory=lambda: random.randint(1, 10))
+    steps_completed: int = 0
     progress: float = 0.0
 
     def can_start(self, completed_subtasks: List[str]) -> bool:

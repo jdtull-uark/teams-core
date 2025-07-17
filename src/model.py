@@ -53,7 +53,6 @@ class EngineeringTeamModel(mesa.Model):
                 "Total_Tasks_Created": lambda m: len(m.tasks),
                 "Psychological_Safety": "psychological_safety",
                 "Average_PPS": lambda m: mean([a.pps for a in m.agents if hasattr(a, "pps")]),
-                "Average_knowledge" : lambda m: mean([a.knowledge for a in m.agents if hasattr(a, "knowledge")])
             },
             agent_reporters={
                 "PPS": lambda a: a.pps if hasattr(a, "pps") else None
