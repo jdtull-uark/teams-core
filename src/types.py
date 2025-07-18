@@ -17,6 +17,7 @@ class TaskStatus(Enum):
     BLOCKED = "blocked"
 
 class SubTaskStatus(Enum):
+    NOT_STARTED = "not_started"
     ACTIVE = "active"
     COMPLETED = "completed"
     IN_PROGRESS = "in_progress"
@@ -48,7 +49,7 @@ class Task:
 class SubTask:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = ""
-    status: TaskStatus = TaskStatus.BACKLOG
+    status: SubTaskStatus = SubTaskStatus.NOT_STARTED
     assigned_to: Optional[str] = None
     dependencies: List[str] = field(default_factory=list)
     required_knowledge: List[str] = field(default_factory=list)
@@ -63,7 +64,7 @@ class SubTask:
 @dataclass
 class InteractionRecord:
     """Records details of an interaction between agents."""
-    timestamp: int
+    step: int
     initiator_id: str
     recipient_id: str
     interaction_type: InteractionType

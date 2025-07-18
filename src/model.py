@@ -5,16 +5,18 @@ from typing import Dict
 from .types import Task, TaskStatus, SubTask, SubTaskStatus
 from .agents import EngineerAgent, ManagerAgent
 from .rules import PsychologicalSafetyRule
+from .utils import log
 
 class EngineeringTeamModel(mesa.Model):
     """Main model class for the engineering team simulation."""
     
     def __init__(self, num_steps: int = 100, num_engineers: int = 5, num_managers: int = 0, initial_tasks: int = 10,
-                 initial_psych_safety: float = 0.5, psych_safety_threshold: float = 0.7):
+                 initial_psych_safety: float = 0.5, psych_safety_threshold: float = 0.7, enable_logging: bool = True):
         super().__init__()
 
         self.grid = mesa.space.MultiGrid(width = 10, height = 10, torus = False)
-        
+        self.is_logging = enable_logging
+
         self.num_engineers = num_engineers
         self.num_managers = num_managers
         self.initial_tasks = initial_tasks
@@ -40,6 +42,7 @@ class EngineeringTeamModel(mesa.Model):
         
         # Create initial tasks
         self._create_initial_tasks(self.initial_tasks)
+        self._assign_initial_tasks()
         
         # Basic data collection
         self.datacollector = mesa.DataCollector(
@@ -53,9 +56,12 @@ class EngineeringTeamModel(mesa.Model):
                 "Total_Tasks_Created": lambda m: len(m.tasks),
                 "Psychological_Safety": "psychological_safety",
                 "Average_PPS": lambda m: mean([a.pps for a in m.agents if hasattr(a, "pps")]),
+                "Average_Knowledge": lambda m: mean([len(a.learned_knowledge) for a in m.agents if hasattr(a, "learned_knowledge")]),
             },
             agent_reporters={
-                "PPS": lambda a: a.pps if hasattr(a, "pps") else None
+                "PPS": lambda a: a.pps if hasattr(a, "pps") else None,
+                "Knowledge": lambda a: len(a.learned_knowledge) if hasattr(a, "learned_knowledge") else None,
+                "Current_Task": lambda a: a.current_task.id if hasattr(a, "current_task") and a.current_task else None,
             }
         )
 
@@ -72,6 +78,53 @@ class EngineeringTeamModel(mesa.Model):
         print(40*'-')
         print('\n')
 
+        if self.is_logging:
+            log.create_new_log_file()
+            log.enable_logging()
+            log.log_model_event(
+                self.steps, 
+                "model_initialized", 
+                {
+                    "num_engineers": self.num_engineers,
+                    "num_steps": self.num_steps,
+                    "psych_safety_threshold": self.psychological_safety_threshold
+                }
+            )
+            log.log_model_event(
+                self.steps,
+                "initial_agent_setup",
+                {
+                    agent.agent_id: [task.name for task in agent.assigned_tasks] for agent in self.agents 
+                }
+            )
+        else:
+            log.disable_logging()
+            print("Logging is disabled. No logs will be recorded during the simulation.")
+
+
+
+    def run_model(self, steps: int):
+        """Run the model for a specified number of steps."""
+
+        log.log_model_event(
+            self.steps,
+            "simulation_start",
+            {"planned_steps": steps}
+        )
+        
+        try:
+            for i in range(steps):
+                self.step()
+        except Exception as e:
+            log.log_model_event(
+                self.steps,
+                "simulation_error",
+                {"error": str(e)}
+            )
+            raise
+        finally:
+            log.log_session_end()
+
     def _create_agents(self):
         """Create engineer and manager agents."""
         agent_id = 0
@@ -80,6 +133,7 @@ class EngineeringTeamModel(mesa.Model):
         for i in range(self.num_engineers):
             
             agent = EngineerAgent(agent_id, self)
+            agent.learned_knowledge = set(random.sample(self.knowledge_space, k=random.randint(1, len(self.knowledge_space))))
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             self.grid.place_agent(agent, (x, y))
@@ -88,8 +142,7 @@ class EngineeringTeamModel(mesa.Model):
 
     def _create_knowledge_space(self, size: int = 20):
         """Create knowledge sets for the model."""
-
-        self.knowledge_space = [f"K{"0"*(len(str(size)) - len(str(i)))}{i}" for i in range(1, size)]
+        self.knowledge_space = [f"K{'0'*(len(str(size)) - len(str(i)))}{i}" for i in range(1, size + 1)]
         print(f"Knowledge space created with {len(self.knowledge_space)} knowledge items. Formatted as {next(iter(self.knowledge_space))}")
 
     def _create_initial_tasks(self, num_tasks: int):
@@ -108,22 +161,33 @@ class EngineeringTeamModel(mesa.Model):
         
         difficulty = random.randint(1, 10)
 
-        dependencies = random.sample(self.knowledge_space, k=difficulty) if self.knowledge_space else []
+        required_knowledge = random.sample(self.knowledge_space, k=difficulty) if self.knowledge_space else []
         
         for i in range(num_subtasks):
-            subtask = SubTask(name=f"{task.name} {i+1}", dependencies=dependencies, difficulty=difficulty)
-            self.tasks[subtask.id] = subtask
+            subtask = SubTask(name=f"{task.name} {i+1}", required_knowledge=required_knowledge, difficulty=difficulty)
+            task.subtasks.append(subtask)
 
     def _assign_initial_tasks(self):
-        """Assign initial tasks to engineers."""
-        for task in self.tasks.values():
-            if task.status == TaskStatus.BACKLOG:
-                # Randomly assign to an engineer
-                engineer = self.random.choice([a for a in self.agents if isinstance(a, EngineerAgent)])
+        """Assign initial tasks to engineers, ensuring each gets at least one."""
+        engineers = [a for a in self.agents if isinstance(a, EngineerAgent)]
+        tasks = list(self.tasks.values())
+        
+        # First, give each engineer one task
+        for i, engineer in enumerate(engineers):
+            if i < len(tasks):
+                task = tasks[i]
                 task.assigned_to = engineer.agent_id
-                task.status = TaskStatus.IN_PROGRESS
-                engineer.current_task = task
+                task.status = TaskStatus.BACKLOG
+                engineer.assigned_tasks.append(task)
                 print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
+        
+        # Then randomly assign remaining tasks
+        for task in tasks[len(engineers):]:
+            engineer = self.random.choice(engineers)
+            task.assigned_to = engineer.agent_id
+            task.status = TaskStatus.BACKLOG
+            engineer.assigned_tasks.append(task)
+            print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
 
     def _generate_new_task(self):
         """Generates a new task occasionally."""
@@ -131,6 +195,11 @@ class EngineeringTeamModel(mesa.Model):
         
     def step(self):
         """Execute one step of the model."""
+        log.log_model_event(
+            self.steps,
+            "step_start"
+        )
+
         if self.steps >= self.num_steps:
             self.running = False
                
@@ -139,6 +208,11 @@ class EngineeringTeamModel(mesa.Model):
 
         # Collect data
         self.datacollector.collect(self)
+
+        log.log_model_event(
+            self.steps,
+            "step_end"
+        )
 
 
 

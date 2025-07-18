@@ -1,6 +1,7 @@
 import mesa
 import random
-from typing import Any, Dict, List, TYPE_CHECKING # NEW: Import TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
+from ..utils import log
 
 if TYPE_CHECKING:
     from ..model import EngineeringTeamModel
@@ -10,16 +11,32 @@ class BaseAgent(mesa.Agent):
     
     def __init__(self, unique_id: int, model: 'EngineeringTeamModel'): # Keep as string literal for forward reference
         super().__init__(model)
+        self.agent_id = unique_id
+        self.name = f"Agent {unique_id}"
         self.attributes: Dict[str, Any] = {}
         self.history: List[Dict[str, Any]] = []
-        self.agent_id = unique_id
+
+    @property
+    def __dict__(self):
+        original_dict = super().__dict__
+        original_dict['agent_id'] = self.agent_id
+        original_dict['attributes'] = self.attributes
+        original_dict['history'] = self.history
+        return {k: v for k, v in original_dict.items() if k != 'model'}
 
     def _log_history(self, action: str, details: Dict[str, Any] = None):
-        """Logs an action taken by the agent."""
+        """Logs an action taken by the agent to both internal history and file."""
         log_entry = {"step": self.model.steps, "action": action}
         if details:
             log_entry.update(details)
         self.history.append(log_entry)
+        
+        log.log_agent_action(
+            self.agent_id,
+            self.model.steps,
+            action,
+            details
+        )
         
     def initiate_interaction(self, recipient_agent: 'BaseAgent', interaction_type: Any, details: Dict[str, Any] = None) -> bool:
         """

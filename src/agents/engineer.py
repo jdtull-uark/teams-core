@@ -16,10 +16,12 @@ class EngineerAgent(BaseAgent):
         super().__init__(unique_id, model)
         
         # Task management
+        self.assigned_tasks: List[Task] = []  # Tasks assigned to this engineer
         self.current_task: Optional[Task] = None
         self.current_subtask: Optional[SubTask] = None
         self.completed_tasks: List[str] = []
         self.completed_subtasks: List[str] = []
+        self.all_tasks_completed: bool = False
         
         # Psychological Safety
         self.pps: float = random.uniform(0.0, 1.0) # perceived psychological safety
@@ -31,7 +33,7 @@ class EngineerAgent(BaseAgent):
         self.availability: float = random.uniform(0.5, 1.0)  # Availability for tasks (0.5 to 1.0)
 
         # Knowledge system
-        self.learned_knowledge: set[str] = set()  # Concepts the engineer knows
+        self.learned_knowledge: set[str] = {}  # Concepts the engineer knows
         self.knowledge_network: Dict[int, set[str]] = {}  # { agent_id : {"K001", "K002", ...}, }
         self.concept_learning_progress: Dict[str, float] = {} # {concept_id: progress (0-1)}
 
@@ -51,14 +53,43 @@ class EngineerAgent(BaseAgent):
         
     def work_on_task(self):
         """Progress on current task."""
+       
         if not self.current_task:
-            return
+            self.current_task = next((task for task in self.assigned_tasks if task.status == TaskStatus.BACKLOG), None)
+            if not self.current_task:
+                print(f"Engineer {self.unique_id} has no tasks assigned.")
+                return
+            else:
+                self.current_task.status = TaskStatus.IN_PROGRESS
+                print(f"Engineer {self.unique_id} started working on task {self.current_task.id}.")
+        if self.current_task.status == TaskStatus.IN_PROGRESS:
+            if self.current_subtask:
+                print(f"Engineer {self.unique_id} is working on subtask {self.current_subtask.id} of task {self.current_task.id}.")
+                self.work_on_subtask()
+                if all(subtask.status == SubTaskStatus.COMPLETED for subtask in self.current_task.subtasks):
+                    # All subtasks completed, mark task as completed
+                    self.current_task.status = TaskStatus.COMPLETED
+                    self.completed_tasks.append(self.current_task.id)
+                    self._log_history("task_completed", {"task_id": self.current_task.id})
+                    self.current_task = None
+                    self.current_subtask = None
+                    if all(task.status == TaskStatus.COMPLETED for task in self.assigned_tasks):
+                        self.all_tasks_completed = True
+                        self._log_history("all_tasks_completed", {"engineer_id": self.unique_id})
+                elif self.current_subtask.status == SubTaskStatus.COMPLETED:
+                    # Move to the next subtask if current one is completed
+                    self.current_subtask = next((subtask for subtask in self.current_task.subtasks if subtask.status == SubTaskStatus.ACTIVE), None)
+            else:
+                # If no current subtask, start the first subtask
+                self.current_subtask = next((subtask for subtask in self.current_task.subtasks if subtask.status == SubTaskStatus.NOT_STARTED), None)
             
     
     def work_on_subtask(self):
         """Progress on current subtask."""
         if not self.current_subtask:
             return
+        
+        self._log_history("work_on_subtask", {"subtask_id": self.current_subtask.id})
         
         if all(required_knowledge in self.learned_knowledge for required_knowledge in self.current_subtask.required_knowledge):
             # If all required knowledge is known, work on the subtask
@@ -70,32 +101,40 @@ class EngineerAgent(BaseAgent):
                 self.current_subtask.status = SubTaskStatus.COMPLETED
                 self.completed_subtasks.append(self.current_subtask.id)
                 self._log_history("subtask_completed", {"subtask_id": self.current_subtask.id})
-                self.current_subtask = None
+                self.seeking_agent_targets = []
+                self.seeking_knowledge = False
+                self.seeking_agent = False
         else:
-            # If not all required knowledge is known, work or learn
+            # If not all required knowledge is known, try to learn
             missing_knowledge = self.get_missing_knowledge()
+            if not missing_knowledge:
+                print(f"Engineer {self.unique_id} has no missing knowledge for subtask {self.current_subtask.id}.")
+            
             self.seeking_knowledge = True
-
             for concept in missing_knowledge:
-                if concept not in self.learned_knowledge:
-                    # If we don't know the concept, learn it
-                    if concept not in self.concept_learning_progress:
-                        self.concept_learning_progress[concept] = 0.0
-                    
-                    self.concept_learning_progress[concept] += self.learning_rate * self.work_efficiency * random.uniform(1,1.5)
-                    
-                    if self.concept_learning_progress[concept] >= 1.0:
-                        # Concept learned
-                        self.learned_knowledge.add(concept)
-                        self._log_history("knowledge_learned", {"concept": concept})
-                        del self.concept_learning_progress[concept]
+                if self.knows_agent_with_knowledge(concept):
+                    self.seeking_agent = True
+                    self.seeking_agent_targets = self.find_agents_with_needed_knowledge()
+
+                if concept not in self.concept_learning_progress:
+                    self.concept_learning_progress[concept] = 0.0
+                
+                self.concept_learning_progress[concept] += self.learning_rate * self.work_efficiency * random.uniform(0.5,1.5)
+                
+                if self.concept_learning_progress[concept] >= 1.0:
+                    # Concept learned
+                    self.learned_knowledge.add(concept)
+                    self._log_history("knowledge_learned", {"concept": concept})
+                    del self.concept_learning_progress[concept]
         
 
     def step(self):
         """Engineer step behavior."""
-        if self.current_task:
+        if not self.all_tasks_completed:
             self.work_on_task()
-        
+        else:
+            self._log_history("all_tasks_completed", {"engineer_id": self.unique_id})
+
         # Attempt to interact with a nearby agent
         neighbors = self.model.grid.get_neighbors(self.pos, moore=True, include_center=False)
         if neighbors:
@@ -113,11 +152,15 @@ class EngineerAgent(BaseAgent):
                     self.initiate_interaction(recipient, interaction_type="collaboration")
         elif self.seeking_agent and self.seeking_agent_targets:
             # If seeking agent is enabled, try to move toward a target
-            target = self.get_closest_agent_with_knowledge(self.current_subtask.required_knowledge[0]) if self.current_subtask else None
+            target = self.get_closest_agent(self.seeking_agent_targets) if self.current_subtask else None
             if target:
                 if not self.move_toward_agent(target):
                     # If we can't move toward the target, just take a random step
                     self.take_random_step()
+                    return
+                
+        self.take_random_step()
+
 
 
     def take_random_step(self):
@@ -131,15 +174,17 @@ class EngineerAgent(BaseAgent):
     def process_interaction(self, recipient: 'EngineerAgent', interaction_type: Any = None, speaking_percentage: int = 0, details: Dict[str, Any] = None):
         """Process an interaction with another agent."""
         # Handle specific interaction types
-        if interaction_type == InteractionType.COLLABORATION:
+        interaction_type_enum = InteractionType(interaction_type) if interaction_type else None
+
+        if interaction_type_enum == InteractionType.COLLABORATION:
             self.handle_collaboration(recipient, details)
-        elif interaction_type == InteractionType.HELP_REQUEST:
+        elif interaction_type_enum == InteractionType.HELP_REQUEST:
             self.handle_help_request(recipient, details)
-        elif interaction_type == InteractionType.HELP_OFFER:
+        elif interaction_type_enum == InteractionType.HELP_OFFER:
             self.handle_help_offer(recipient, details)
-        elif interaction_type == InteractionType.KNOWLEDGE_REQUEST:
+        elif interaction_type_enum == InteractionType.KNOWLEDGE_REQUEST:
             self.handle_knowledge_request(recipient, details)
-        elif interaction_type == InteractionType.FEEDBACK:
+        elif interaction_type_enum == InteractionType.FEEDBACK:
             self.handle_feedback(recipient, details)
         
         speaking_time = speaking_percentage * details["interaction_duration"]
@@ -149,7 +194,7 @@ class EngineerAgent(BaseAgent):
         
         # Record the interaction
         interaction_record = InteractionRecord(
-            timestamp=self.model.time,
+            step=self.model.steps,
             initiator_id=str(self.unique_id),
             recipient_id=str(recipient.unique_id),
             interaction_type=interaction_type,
@@ -162,19 +207,17 @@ class EngineerAgent(BaseAgent):
         """Receive an interaction from another agent."""
         super().receive_interaction(sender_agent, interaction_type, details)
 
-        self.process_interaction(sender_agent, speaking_percentage = 1 - details["sender_speaking_percentage"], details = details)
+        self.process_interaction(sender_agent, interaction_type = interaction_type, speaking_percentage = 1 - details["sender_speaking_percentage"], details = details)
 
 
-    def initiate_interaction(self, recipient_agent, interaction_type: Any,):
+    def initiate_interaction(self, recipient_agent, interaction_type: Any, details: Dict[str, Any] = {}):
         """Initiate an interaction with another agent."""
-        details = {
-            "interaction_duration": self.random.uniform(1.0, 5.0),
-            "sender_speaking_percentage": self.random.uniform(0.05, 0.95)
-        }
+        details["interaction_duration"] = self.random.uniform(1.0, 5.0)
+        details["sender_speaking_percentage"] = self.random.uniform(0.05, 0.95)
 
         super().initiate_interaction(recipient_agent, interaction_type, details)
 
-        self.process_interaction(recipient_agent, speaking_percentage = details["sender_speaking_percentage"], details = details,)
+        self.process_interaction(recipient_agent, interaction_type = interaction_type, speaking_percentage = details["sender_speaking_percentage"], details = details,)
 
     
     def update_cps(self):
@@ -208,7 +251,7 @@ class EngineerAgent(BaseAgent):
         """Initiate a knowledge request interaction. Should return interaction details."""
         return {
             "interaction_type": InteractionType.KNOWLEDGE_REQUEST,
-            "recipient": recipient,
+            "recipient": recipient.agent_id,
             "requested_concepts": self.get_missing_knowledge(),
             "interaction_duration": self.random.uniform(1.0, 5.0),
             "sender_speaking_percentage": self.random.uniform(0.05, 0.95)
@@ -221,16 +264,16 @@ class EngineerAgent(BaseAgent):
             if concept in self.learned_knowledge:
                 # If we know the concept, initiate a knowledge share
                 details["concept"] = concept
-                self.initiate_interaction(sender, InteractionType.KNOWLEDGE_SHARE, details=details)
+                self.initiate_interaction(sender, "knowledge_share", details=details)
             elif self.knows_agent_with_knowledge(concept):
                 # If we know an agent has this knowledge, update the knowledge network
                 for agent in sender.get_agents_with_knowledge:
                     sender.knowledge_network.setdefault(agent.agent_id, set()).add(concept)
         
         
-    def handle_knowledge_request(self, recipient: 'EngineerAgent', missing_knowledge: List[str], details: Dict[str, Any]):
+    def handle_knowledge_request(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
         """Handle knowledge sharing interaction."""
-        details.update(self.initiate_knowledge_request(recipient, missing_knowledge, details))
+        details.update(self.initiate_knowledge_request(recipient, details))
         recipient.receive_knowledge_request(self, details)
 
 
@@ -238,7 +281,7 @@ class EngineerAgent(BaseAgent):
         """Initiate a knowledge share interaction."""
         return {
             "interaction_type": InteractionType.KNOWLEDGE_SHARE,
-            "recipient": recipient,
+            "recipient": recipient.agent_id,
             "shared_concept": concept,
         }      
 
@@ -328,6 +371,24 @@ class EngineerAgent(BaseAgent):
         min_distance = float('inf')
         
         for agent_id in agents_with_knowledge:
+            target_agent = self.model.get_agent_by_id(agent_id)
+            if target_agent and target_agent.pos:
+                distance = self.model.grid.get_distance(self.pos, target_agent.pos)
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_agent = target_agent
+        
+        return nearest_agent
+    
+    def get_closest_agent(self, targets: List['EngineerAgent']) -> Optional['EngineerAgent']:
+        """Get the closest agent who has a specific knowledge concept."""
+        if not targets:
+            return None
+        
+        nearest_agent = None
+        min_distance = float('inf')
+        
+        for agent_id in targets:
             target_agent = self.model.get_agent_by_id(agent_id)
             if target_agent and target_agent.pos:
                 distance = self.model.grid.get_distance(self.pos, target_agent.pos)

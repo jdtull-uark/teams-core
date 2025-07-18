@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt # Import for displaying plots
 from src.model import EngineeringTeamModel
-from src.utils.analysis import analyze_results
 from src.types import TaskStatus
+from src.utils import log
 
 if __name__ == "__main__":
     print("Starting Engineering Team Simulation...")
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     initial_tasks = 15
     initial_psych_safety = 0.5
     psych_safety_threshold = 0.7
-    num_steps = 200 # Number of simulation steps
+    num_steps = 80 # Number of simulation steps
 
     # Instantiate the model
     model = EngineeringTeamModel(
@@ -35,10 +35,4 @@ if __name__ == "__main__":
             print(f"Step {i+1}/{num_steps} | Completed Tasks: {completed} | Psych Safety: {model.psychological_safety:.2f}")
             
     print("\nSimulation Finished.")
-
-    # Analyze and visualize results
-    analyze_results(model)
-
-    # Keep plots open until user closes them
-    plt.show()
 
