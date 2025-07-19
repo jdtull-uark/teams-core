@@ -218,3 +218,10 @@ class EngineeringTeamModel(mesa.Model):
 
     def is_done(self):
         return all(task.status == TaskStatus.COMPLETED for task in self.tasks.values())
+    
+    def get_agent_by_id(self, agent_id: str):
+        """Get an agent by its unique ID."""
+        for agent in self.agents:
+            if agent.agent_id == agent_id:
+                return agent
+        return None

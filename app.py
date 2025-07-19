@@ -7,24 +7,11 @@ from src.agents import EngineerAgent, ManagerAgent
 def agent_portrayal(agent):
     if isinstance(agent, EngineerAgent):
         if agent.seeking_agent:
-            return {"color": "green", "w": 0.9, "h": 0.9}
+            return {"color": "green", "w": 0.7, "h": 0.7}
         elif agent.seeking_knowledge:
-            return {"color": "orange", "w": 0.9, "h": 0.9}
-        return {"color": "blue"}
-    elif isinstance(agent, ManagerAgent):
-        return {"color": "red", "w": 0.9, "h": 0.9}
-    return {}
-
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-import solara
-from mesa.visualization import SolaraViz, make_plot_component, make_space_component
-from src.model import EngineeringTeamModel
-from src.agents import EngineerAgent, ManagerAgent
-
-def agent_portrayal(agent):
-    if isinstance(agent, EngineerAgent):
-        return {"color": "blue"}
+            return {"color": "orange", "w": 0.7, "h": 0.7}
+        else:
+            return {"color": "blue"}
     elif isinstance(agent, ManagerAgent):
         return {"color": "red", "w": 0.9, "h": 0.9}
     return {}

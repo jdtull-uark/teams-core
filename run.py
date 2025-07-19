@@ -12,7 +12,7 @@ if __name__ == "__main__":
     initial_tasks = 15
     initial_psych_safety = 0.5
     psych_safety_threshold = 0.7
-    num_steps = 80 # Number of simulation steps
+    num_steps = 300 # Number of simulation steps
 
     # Instantiate the model
     model = EngineeringTeamModel(

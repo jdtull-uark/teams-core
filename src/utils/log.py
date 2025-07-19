@@ -109,9 +109,9 @@ def _format_details(details: Dict[str, Any]) -> str:
         if key == "interaction_duration":
             formatted_parts.append(f"Duration: {value:.2f}s")
         elif key == "recipient":
-            formatted_parts.append(f"To: Agent {value:03d}")
+            formatted_parts.append(f"To: Agent {value.id:03d}")
         elif key == "sender":
-            formatted_parts.append(f"From: Agent {value:03d}")
+            formatted_parts.append(f"From: Agent {value.id:03d}")
         elif key == "type":
             formatted_parts.append(f"Type: {value}")
         elif key == "details" and isinstance(value, dict):

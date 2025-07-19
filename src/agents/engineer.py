@@ -60,7 +60,7 @@ class EngineerAgent(BaseAgent):
                 print(f"Engineer {self.unique_id} has no tasks assigned.")
                 return
             else:
-                self.current_task.status = TaskStatus.IN_PROGRESS
+                self.current_task.start()
                 print(f"Engineer {self.unique_id} started working on task {self.current_task.id}.")
         if self.current_task.status == TaskStatus.IN_PROGRESS:
             if self.current_subtask:
@@ -68,7 +68,7 @@ class EngineerAgent(BaseAgent):
                 self.work_on_subtask()
                 if all(subtask.status == SubTaskStatus.COMPLETED for subtask in self.current_task.subtasks):
                     # All subtasks completed, mark task as completed
-                    self.current_task.status = TaskStatus.COMPLETED
+                    self.current_task.complete()
                     self.completed_tasks.append(self.current_task.id)
                     self._log_history("task_completed", {"task_id": self.current_task.id})
                     self.current_task = None
@@ -76,7 +76,7 @@ class EngineerAgent(BaseAgent):
                     if all(task.status == TaskStatus.COMPLETED for task in self.assigned_tasks):
                         self.all_tasks_completed = True
                         self._log_history("all_tasks_completed", {"engineer_id": self.unique_id})
-                elif self.current_subtask.status == SubTaskStatus.COMPLETED:
+                elif self.current_subtask.is_complete():
                     # Move to the next subtask if current one is completed
                     self.current_subtask = next((subtask for subtask in self.current_task.subtasks if subtask.status == SubTaskStatus.ACTIVE), None)
             else:
@@ -98,7 +98,7 @@ class EngineerAgent(BaseAgent):
             
             if self.current_subtask.progress >= 1.0:
                 # Subtask completed
-                self.current_subtask.status = SubTaskStatus.COMPLETED
+                self.current_subtask.complete()
                 self.completed_subtasks.append(self.current_subtask.id)
                 self._log_history("subtask_completed", {"subtask_id": self.current_subtask.id})
                 self.seeking_agent_targets = []
@@ -251,7 +251,7 @@ class EngineerAgent(BaseAgent):
         """Initiate a knowledge request interaction. Should return interaction details."""
         return {
             "interaction_type": InteractionType.KNOWLEDGE_REQUEST,
-            "recipient": recipient.agent_id,
+            "recipient": recipient.name,
             "requested_concepts": self.get_missing_knowledge(),
             "interaction_duration": self.random.uniform(1.0, 5.0),
             "sender_speaking_percentage": self.random.uniform(0.05, 0.95)
@@ -267,8 +267,10 @@ class EngineerAgent(BaseAgent):
                 self.initiate_interaction(sender, "knowledge_share", details=details)
             elif self.knows_agent_with_knowledge(concept):
                 # If we know an agent has this knowledge, update the knowledge network
-                for agent in sender.get_agents_with_knowledge:
+                for agent in sender.get_agents_with_knowledge(concept):
                     sender.knowledge_network.setdefault(agent.agent_id, set()).add(concept)
+            else:
+                sender.knowledge_network.setdefault(self.agent_id, set()).add(random.choice(list(self.learned_knowledge)))
         
         
     def handle_knowledge_request(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
@@ -323,7 +325,7 @@ class EngineerAgent(BaseAgent):
     
     def get_agents_with_knowledge(self, concept: str) -> List[int]:
         """Get list of agent IDs that we know have a specific knowledge concept."""
-        return [agent_id for agent_id, concepts in self.knowledge_network.items() 
+        return [agent for agent, concepts in self.knowledge_network.items() 
                 if concept in concepts]
     
     def find_agents_with_needed_knowledge(self) -> List[int]:
@@ -391,7 +393,12 @@ class EngineerAgent(BaseAgent):
         for agent_id in targets:
             target_agent = self.model.get_agent_by_id(agent_id)
             if target_agent and target_agent.pos:
-                distance = self.model.grid.get_distance(self.pos, target_agent.pos)
+                # Calculate Manhattan or Euclidean distance
+                dx = abs(self.pos[0] - target_agent.pos[0])
+                dy = abs(self.pos[1] - target_agent.pos[1])
+                distance = dx + dy  # Manhattan distance
+                # Or use: distance = math.sqrt(dx**2 + dy**2)  # Euclidean distance
+                
                 if distance < min_distance:
                     min_distance = distance
                     nearest_agent = target_agent
@@ -410,7 +417,9 @@ class EngineerAgent(BaseAgent):
             best_distance = float('inf')
             
             for step in possible_steps:
-                distance = self.model.grid.get_distance(step, target.pos)
+                dx = abs(self.pos[0] - target.pos[0])
+                dy = abs(self.pos[1] - target.pos[1])
+                distance = math.sqrt(dx**2 + dy**2)
                 if distance < best_distance:
                     best_distance = distance
                     best_move = step
