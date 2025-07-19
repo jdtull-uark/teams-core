@@ -2,8 +2,8 @@ import mesa
 import random
 from statistics import mean
 from typing import Dict
-from .types import Task, TaskStatus, SubTask, SubTaskStatus
 from .agents import EngineerAgent, ManagerAgent
+from .agents.components.task_manager import Task, SubTask, TaskStatus, SubTaskStatus
 from .rules import PsychologicalSafetyRule
 from .utils import log
 
@@ -34,7 +34,7 @@ class EngineeringTeamModel(mesa.Model):
 
         self._create_knowledge_space()
         
-        # Task management
+        
         self.tasks: Dict[str, Task] = {}
         
         # Create agents
@@ -94,7 +94,7 @@ class EngineeringTeamModel(mesa.Model):
                 self.steps,
                 "initial_agent_setup",
                 {
-                    agent.agent_id: [task.name for task in agent.assigned_tasks] for agent in self.agents 
+                    agent.agent_id: [task.name for task in agent.task_manager.assigned_tasks] for agent in self.agents 
                 }
             )
         else:
@@ -127,18 +127,14 @@ class EngineeringTeamModel(mesa.Model):
 
     def _create_agents(self):
         """Create engineer and manager agents."""
-        agent_id = 0
-        
         # Create engineers
-        for i in range(self.num_engineers):
-            
-            agent = EngineerAgent(agent_id, self)
+        for _ in range(self.num_engineers):
+            agent = EngineerAgent(self)
             agent.learned_knowledge = set(random.sample(self.knowledge_space, k=random.randint(1, len(self.knowledge_space))))
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             self.grid.place_agent(agent, (x, y))
 
-            agent_id += 1
 
     def _create_knowledge_space(self, size: int = 20):
         """Create knowledge sets for the model."""
@@ -178,7 +174,7 @@ class EngineeringTeamModel(mesa.Model):
                 task = tasks[i]
                 task.assigned_to = engineer.agent_id
                 task.status = TaskStatus.BACKLOG
-                engineer.assigned_tasks.append(task)
+                engineer.task_manager.assigned_tasks.append(task)
                 print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
         
         # Then randomly assign remaining tasks
@@ -186,7 +182,7 @@ class EngineeringTeamModel(mesa.Model):
             engineer = self.random.choice(engineers)
             task.assigned_to = engineer.agent_id
             task.status = TaskStatus.BACKLOG
-            engineer.assigned_tasks.append(task)
+            engineer.task_manager.assigned_tasks.append(task)
             print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
 
     def _generate_new_task(self):

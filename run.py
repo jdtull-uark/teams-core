@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt # Import for displaying plots
 from src.model import EngineeringTeamModel
-from src.types import TaskStatus
+from src.agents.components.task_manager import TaskStatus
 from src.utils import log
 
 if __name__ == "__main__":

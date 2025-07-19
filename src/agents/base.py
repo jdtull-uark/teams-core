@@ -2,6 +2,7 @@ import mesa
 import random
 from typing import Any, Dict, List, TYPE_CHECKING
 from ..utils import log
+import uuid
 
 if TYPE_CHECKING:
     from ..model import EngineeringTeamModel
@@ -9,14 +10,14 @@ if TYPE_CHECKING:
 class BaseAgent(mesa.Agent):
     """Base class for all agents in the engineering team model."""
     
-    def __init__(self, unique_id: int, model: 'EngineeringTeamModel'): # Keep as string literal for forward reference
+    def __init__(self, model: 'EngineeringTeamModel'): # Keep as string literal for forward reference
         super().__init__(model)
-        self.agent_id = unique_id
-        self.name = f"Agent {unique_id}"
+        self.agent_id = uuid.uuid4()
+        self.name = f"Agent {self.agent_id}"
         self.attributes: Dict[str, Any] = {}
         self.history: List[Dict[str, Any]] = []
 
-    @property
+    @property   
     def __dict__(self):
         original_dict = super().__dict__
         original_dict['agent_id'] = self.agent_id

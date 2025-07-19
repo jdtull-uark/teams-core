@@ -1,6 +1,5 @@
 from .base import BaseAgent
 from .engineer import EngineerAgent
-from ..types import TaskStatus # Note: InteractionType is not imported here for minimal setup.
 from typing import TYPE_CHECKING # NEW: Import TYPE_CHECKING
 
 if TYPE_CHECKING:
