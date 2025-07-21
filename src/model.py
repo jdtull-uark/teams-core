@@ -3,7 +3,7 @@ import random
 from statistics import mean
 from typing import Dict
 from .agents import EngineerAgent, ManagerAgent
-from .agents.components.task_manager import Task, SubTask, TaskStatus, SubTaskStatus
+from .agents.components.tasking import Task, SubTask, TaskStatus, SubTaskStatus
 from .rules import PsychologicalSafetyRule
 from .utils import log
 
@@ -44,7 +44,7 @@ class EngineeringTeamModel(mesa.Model):
         self._create_initial_tasks(self.initial_tasks)
         self._assign_initial_tasks()
         
-        # Basic data collection
+        
         self.datacollector = mesa.DataCollector(
             model_reporters={
                 "Completed_Tasks": lambda m: len([t for t in m.tasks.values() 
@@ -61,7 +61,8 @@ class EngineeringTeamModel(mesa.Model):
             agent_reporters={
                 "PPS": lambda a: a.pps if hasattr(a, "pps") else None,
                 "Knowledge": lambda a: len(a.learned_knowledge) if hasattr(a, "learned_knowledge") else None,
-                "Current_Task": lambda a: a.current_task.id if hasattr(a, "current_task") and a.current_task else None,
+                "Current_Task": lambda a: a.tasking.current_task if hasattr(a, "tasking") and a.tasking.current_task else None,
+                "Current_Subtask": lambda a: a.tasking.current_subtask if hasattr(a, "tasking") and a.tasking.current_subtask else None,
             }
         )
 
@@ -94,7 +95,7 @@ class EngineeringTeamModel(mesa.Model):
                 self.steps,
                 "initial_agent_setup",
                 {
-                    agent.agent_id: [task.name for task in agent.task_manager.assigned_tasks] for agent in self.agents 
+                    agent.unique_id: [task.name for task in agent.tasking.assigned_tasks] for agent in self.agents 
                 }
             )
         else:
@@ -146,7 +147,7 @@ class EngineeringTeamModel(mesa.Model):
         for i in range(num_tasks):
             difficulty = random.randint(1, 10)
 
-            task = Task(name=f"Task {i+1}", difficulty=difficulty)
+            task = Task(name=f"Task {i+1}", id=str(f"{i:03d}"), difficulty=difficulty)
 
             self._create_subtasks(task, num_subtasks=difficulty)
 
@@ -160,7 +161,7 @@ class EngineeringTeamModel(mesa.Model):
         required_knowledge = random.sample(self.knowledge_space, k=difficulty) if self.knowledge_space else []
         
         for i in range(num_subtasks):
-            subtask = SubTask(name=f"{task.name} {i+1}", required_knowledge=required_knowledge, difficulty=difficulty)
+            subtask = SubTask(name=f"{task.name} {i+1}", id=str(f"{i:03d}"), required_knowledge=required_knowledge, difficulty=difficulty)
             task.subtasks.append(subtask)
 
     def _assign_initial_tasks(self):
@@ -172,18 +173,18 @@ class EngineeringTeamModel(mesa.Model):
         for i, engineer in enumerate(engineers):
             if i < len(tasks):
                 task = tasks[i]
-                task.assigned_to = engineer.agent_id
+                task.assigned_to = engineer.unique_id
                 task.status = TaskStatus.BACKLOG
-                engineer.task_manager.assigned_tasks.append(task)
-                print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
+                engineer.tasking.assigned_tasks.append(task)
+                print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
         
         # Then randomly assign remaining tasks
         for task in tasks[len(engineers):]:
             engineer = self.random.choice(engineers)
-            task.assigned_to = engineer.agent_id
+            task.assigned_to = engineer.unique_id
             task.status = TaskStatus.BACKLOG
-            engineer.task_manager.assigned_tasks.append(task)
-            print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
+            engineer.tasking.assigned_tasks.append(task)
+            print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
 
     def _generate_new_task(self):
         """Generates a new task occasionally."""
@@ -210,14 +211,12 @@ class EngineeringTeamModel(mesa.Model):
             "step_end"
         )
 
-
-
     def is_done(self):
         return all(task.status == TaskStatus.COMPLETED for task in self.tasks.values())
     
-    def get_agent_by_id(self, agent_id: str):
+    def get_agent_by_id(self, unique_id: str):
         """Get an agent by its unique ID."""
         for agent in self.agents:
-            if agent.agent_id == agent_id:
+            if agent.unique_id == unique_id:
                 return agent
         return None

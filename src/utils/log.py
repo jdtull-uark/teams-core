@@ -109,9 +109,9 @@ def _format_details(details: Dict[str, Any]) -> str:
         if key == "interaction_duration":
             formatted_parts.append(f"Duration: {value:.2f}s")
         elif key == "recipient":
-            formatted_parts.append(f"To: Agent {value.id:03d}")
+            formatted_parts.append(f"To: Agent {value:03d}")
         elif key == "sender":
-            formatted_parts.append(f"From: Agent {value.id:03d}")
+            formatted_parts.append(f"From: Agent {value:03d}")
         elif key == "type":
             formatted_parts.append(f"Type: {value}")
         elif key == "details" and isinstance(value, dict):
@@ -124,14 +124,14 @@ def _format_details(details: Dict[str, Any]) -> str:
     
     return " | ".join(formatted_parts)
 
-def log_agent_action(agent_id: int, step: int, action: str, details: Dict[str, Any] = None):
+def log_agent_action(unique_id: int, step: int, action: str, details: Dict[str, Any] = None):
     """Log an agent action with structured format."""
     if not _configured:
         setup_logging()
     
     timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]  # Include milliseconds
     
-    base_msg = f"[Step {step:03d}] Agent {agent_id:03d} - {action.upper()}"
+    base_msg = f"[Step {step:03d}] Agent {unique_id} - {action.upper()}"
     
     if details:
         details_str = _format_details(details)

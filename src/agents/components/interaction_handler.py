@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 if TYPE_CHECKING:
     from ..engineer import EngineerAgent
 
-class InteractionHandler:
+class Interaction:
     """Handles all interaction logic for an engineer agent."""
     
     def __init__(self, agent: 'EngineerAgent'):
@@ -153,8 +153,8 @@ class InteractionHandler:
             elif self.agent.knowledge_manager.knows_agent_with_knowledge(concept):
                 # If we know an agent has this knowledge, update the requester's network
                 agents_with_knowledge = self.agent.knowledge_manager.get_agents_with_knowledge(concept)
-                for agent_id in agents_with_knowledge:
-                    sender.knowledge_manager.update_knowledge_network(agent_id, concept)
+                for unique_id in agents_with_knowledge:
+                    sender.knowledge_manager.update_knowledge_network(unique_id, concept)
             else:
                 # Share a random concept we know as a consolation
                 if self.agent.knowledge_manager.learned_knowledge:
