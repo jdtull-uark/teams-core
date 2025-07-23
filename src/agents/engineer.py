@@ -2,13 +2,14 @@ from typing import List, Optional, Dict, Any, TYPE_CHECKING # NEW: Import TYPE_C
 from ..types import *
 from .base import BaseAgent
 from ..rules.psychological_safety_rule import PsychologicalSafetyRule
+from .components.interaction_handler import InteractionMixin, InteractionRecord
 import random
 import math
 
 if TYPE_CHECKING:
     from ..model import EngineeringTeamModel
 
-class EngineerAgent(BaseAgent):
+class EngineerAgent(BaseAgent, InteractionMixin):
     """Represents an individual engineer."""
     
     def __init__(self, unique_id: int, model: 'EngineeringTeamModel'):
@@ -34,7 +35,7 @@ class EngineerAgent(BaseAgent):
 
         # Knowledge system
         self.learned_knowledge: set[str] = {}  # Concepts the engineer knows
-        self.knowledge_network: Dict[int, set[str]] = {}  # { agent_id : {"K001", "K002", ...}, }
+        self.knowledge_network: Dict[int, set[str]] = {}  # { unique_id : {"K001", "K002", ...}, }
         self.concept_learning_progress: Dict[str, float] = {} # {concept_id: progress (0-1)}
 
         # Interaction tracking
@@ -141,15 +142,15 @@ class EngineerAgent(BaseAgent):
             if any(agent in neighbors for agent in self.seeking_agent_targets):
                 recipient = [agent for agent in neighbors if agent in self.seeking_agent_targets][0]
                 if isinstance(recipient, EngineerAgent):
-                    self.initiate_interaction(recipient, interaction_type="help_request")
+                    self.log_interaction(recipient, interaction_type="help_request")
             elif self.seeking_knowledge:
                 recipient = self.random.choice(neighbors)
                 if isinstance(recipient, EngineerAgent):
-                    self.initiate_interaction(recipient, interaction_type="knowledge_request")
+                    self.log_interaction(recipient, interaction_type="knowledge_request")
             elif self.current_subtask:
                 recipient = self.random.choice(neighbors)
                 if isinstance(recipient, EngineerAgent):
-                    self.initiate_interaction(recipient, interaction_type="collaboration")
+                    self.log_interaction(recipient, interaction_type="collaboration")
         elif self.seeking_agent and self.seeking_agent_targets:
             # If seeking agent is enabled, try to move toward a target
             target = self.get_closest_agent(self.seeking_agent_targets) if self.current_subtask else None
@@ -165,159 +166,16 @@ class EngineerAgent(BaseAgent):
 
     def take_random_step(self):
         """Take a random step in the grid."""
-        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=True)
         if possible_steps:
             new_position = self.random.choice(possible_steps)
             self.model.grid.move_agent(self, new_position)
 
-
-    def process_interaction(self, recipient: 'EngineerAgent', interaction_type: Any = None, speaking_percentage: int = 0, details: Dict[str, Any] = None):
-        """Process an interaction with another agent."""
-        # Handle specific interaction types
-        interaction_type_enum = InteractionType(interaction_type) if interaction_type else None
-
-        if interaction_type_enum == InteractionType.COLLABORATION:
-            self.handle_collaboration(recipient, details)
-        elif interaction_type_enum == InteractionType.HELP_REQUEST:
-            self.handle_help_request(recipient, details)
-        elif interaction_type_enum == InteractionType.HELP_OFFER:
-            self.handle_help_offer(recipient, details)
-        elif interaction_type_enum == InteractionType.KNOWLEDGE_REQUEST:
-            self.handle_knowledge_request(recipient, details)
-        elif interaction_type_enum == InteractionType.FEEDBACK:
-            self.handle_feedback(recipient, details)
-        
-        speaking_time = speaking_percentage * details["interaction_duration"]
-        
-        self.pps += recipient.cps * speaking_time * 0.01
-        self.update_cps()
-        
-        # Record the interaction
-        interaction_record = InteractionRecord(
-            step=self.model.steps,
-            initiator_id=str(self.unique_id),
-            recipient_id=str(recipient.unique_id),
-            interaction_type=interaction_type,
-            duration=details.get("interaction_duration", 0),
-        )
-        self.interaction_history.append(interaction_record)
-
     
-    def receive_interaction(self, sender_agent: 'EngineerAgent', interaction_type: Any = None, details: Dict[str, Any] = None, **kwargs):
-        """Receive an interaction from another agent."""
-        super().receive_interaction(sender_agent, interaction_type, details)
-
-        self.process_interaction(sender_agent, interaction_type = interaction_type, speaking_percentage = 1 - details["sender_speaking_percentage"], details = details)
-
-
-    def initiate_interaction(self, recipient_agent, interaction_type: Any, details: Dict[str, Any] = {}):
-        """Initiate an interaction with another agent."""
-        details["interaction_duration"] = self.random.uniform(1.0, 5.0)
-        details["sender_speaking_percentage"] = self.random.uniform(0.05, 0.95)
-
-        super().initiate_interaction(recipient_agent, interaction_type, details)
-
-        self.process_interaction(recipient_agent, interaction_type = interaction_type, speaking_percentage = details["sender_speaking_percentage"], details = details,)
-
-    
-    def update_cps(self):
-        """Update contributed psychological safety (CPS) based on perceived psychological safety (PPS)."""
-        # Normalize PPS from [0, 1] to [-1, 1]
-        target_cps = 2 * self.pps - 1
-
-        # Move CPS toward the normalized PPS
-        self.cps += 0.05 * (target_cps - self.cps)
-
-        # Clamp CPS to [-1, 1]
-        self.cps = max(min(self.cps, 1.0), -1.0)
-
-    
-    def handle_collaboration(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
-        """Handle collaboration interaction - general knowledge sharing."""
-        pass
-
-    
-    def handle_help_request(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
-        """Handle help request interaction."""
-        pass
-
-    
-    def handle_help_offer(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
-        """Handle help offer interaction - proactive knowledge sharing."""
-        pass
-
-
-    def initiate_knowledge_request(self, recipient: 'EngineerAgent', details: Dict[str, Any]) -> Dict[str, Any]:
-        """Initiate a knowledge request interaction. Should return interaction details."""
-        return {
-            "interaction_type": InteractionType.KNOWLEDGE_REQUEST,
-            "recipient": recipient.name,
-            "requested_concepts": self.get_missing_knowledge(),
-            "interaction_duration": self.random.uniform(1.0, 5.0),
-            "sender_speaking_percentage": self.random.uniform(0.05, 0.95)
-        }
-    
-
-    def receive_knowledge_request(self, sender: 'EngineerAgent', details: Dict[str, Any]):
-        """Receive a knowledge request from another agent."""
-        for concept in details.get("requested_concepts", []):
-            if concept in self.learned_knowledge:
-                # If we know the concept, initiate a knowledge share
-                details["concept"] = concept
-                self.initiate_interaction(sender, "knowledge_share", details=details)
-            elif self.knows_agent_with_knowledge(concept):
-                # If we know an agent has this knowledge, update the knowledge network
-                for agent in sender.get_agents_with_knowledge(concept):
-                    sender.knowledge_network.setdefault(agent.agent_id, set()).add(concept)
-            else:
-                sender.knowledge_network.setdefault(self.agent_id, set()).add(random.choice(list(self.learned_knowledge)))
-        
-        
-    def handle_knowledge_request(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
-        """Handle knowledge sharing interaction."""
-        details.update(self.initiate_knowledge_request(recipient, details))
-        recipient.receive_knowledge_request(self, details)
-
-
-    def initiate_knowledge_share(self, recipient: 'EngineerAgent', concept: str, details: Dict[str, Any]) -> Dict[str, Any]:
-        """Initiate a knowledge share interaction."""
-        return {
-            "interaction_type": InteractionType.KNOWLEDGE_SHARE,
-            "recipient": recipient.agent_id,
-            "shared_concept": concept,
-        }      
-
-    def receive_knowledge_share(self, sender: 'EngineerAgent', details: Dict[str, Any]):
-        """Receive a knowledge share from another agent."""
-        concept = details.get("shared_concept")
-        if concept:
-            if concept not in self.learned_knowledge:
-                self.learned_knowledge.add(concept)
-                # Update knowledge network
-                self.knowledge_network.setdefault(sender.agent_id, set()).add(concept)
-                # Optionally, log the knowledge share
-                self._log_history("knowledge_share_received", {
-                    "sender": sender.agent_id,
-                    "shared_concept": concept
-                })
-            sender.knowledge_network.setdefault(self.agent_id, set()).add(concept)
-        
-
-    def handle_knowledge_share(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
-        """Handle knowledge sharing interaction."""
-        details.update(self.initiate_knowledge_request(recipient, details.get("requested_concepts", None), details))
-        recipient.receive_knowledge_share(self, details)
-        
-    
-    def handle_feedback(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
-        """Handle feedback interaction - performance and knowledge feedback."""
-        pass
-
-    
-    def knows_agent_has_knowledge(self, agent_id: int, concept: str) -> bool:
+    def knows_agent_has_knowledge(self, unique_id: int, concept: str) -> bool:
         """Check if we know that a specific agent has a specific knowledge concept."""
-        return (agent_id in self.knowledge_network and 
-                concept in self.knowledge_network[agent_id])
+        return (unique_id in self.knowledge_network and 
+                concept in self.knowledge_network[unique_id])
 
     def knows_agent_with_knowledge(self, concept: str) -> bool:
         """Check if we know any agent has a specific knowledge concept."""
@@ -372,8 +230,8 @@ class EngineerAgent(BaseAgent):
         nearest_agent = None
         min_distance = float('inf')
         
-        for agent_id in agents_with_knowledge:
-            target_agent = self.model.get_agent_by_id(agent_id)
+        for unique_id in agents_with_knowledge:
+            target_agent = self.model.get_agent_by_id(unique_id)
             if target_agent and target_agent.pos:
                 distance = self.model.grid.get_distance(self.pos, target_agent.pos)
                 if distance < min_distance:
@@ -390,8 +248,8 @@ class EngineerAgent(BaseAgent):
         nearest_agent = None
         min_distance = float('inf')
         
-        for agent_id in targets:
-            target_agent = self.model.get_agent_by_id(agent_id)
+        for unique_id in targets:
+            target_agent = self.model.get_agent_by_id(unique_id)
             if target_agent and target_agent.pos:
                 # Calculate Manhattan or Euclidean distance
                 dx = abs(self.pos[0] - target_agent.pos[0])
@@ -417,8 +275,8 @@ class EngineerAgent(BaseAgent):
             best_distance = float('inf')
             
             for step in possible_steps:
-                dx = abs(self.pos[0] - target.pos[0])
-                dy = abs(self.pos[1] - target.pos[1])
+                dx = abs(step[0] - target.pos[0])
+                dy = abs(step[1] - target.pos[1])
                 distance = math.sqrt(dx**2 + dy**2)
                 if distance < best_distance:
                     best_distance = distance

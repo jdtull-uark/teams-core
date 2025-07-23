@@ -24,13 +24,6 @@ class SubTaskStatus(Enum):
     WORKING = "working"
     LEARNING = "learning"
 
-class InteractionType(Enum):
-    COLLABORATION = "collaboration"
-    HELP_REQUEST = "help_request"
-    HELP_OFFER = "help_offer"
-    KNOWLEDGE_REQUEST = "knowledge_request"
-    KNOWLEDGE_SHARE = "knowledge_share"
-    FEEDBACK = "feedback"
 
 @dataclass
 class Task:
@@ -115,13 +108,3 @@ class SubTask:
             self.status = SubTaskStatus.NOT_STARTED
         else:
             raise ValueError(f"Cannot pause subtask with status {self.status}")
-    
-@dataclass
-class InteractionRecord:
-    """Records details of an interaction between agents."""
-    step: int
-    initiator_id: str
-    recipient_id: str
-    interaction_type: InteractionType
-    duration: float
-    knowledge_shared: List[str] = field(default_factory=list)
