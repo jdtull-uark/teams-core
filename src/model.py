@@ -4,6 +4,7 @@ from statistics import mean
 from typing import Dict
 from .types import Task, TaskStatus, SubTask, SubTaskStatus
 from .agents import EngineerAgent, ManagerAgent
+from .agents.components.task_tracker import Task, SubTask, TaskStatus, SubTaskStatus
 from .rules import PsychologicalSafetyRule
 from .utils import log
 
@@ -61,7 +62,8 @@ class EngineeringTeamModel(mesa.Model):
             agent_reporters={
                 "PPS": lambda a: a.pps if hasattr(a, "pps") else None,
                 "Knowledge": lambda a: len(a.learned_knowledge) if hasattr(a, "learned_knowledge") else None,
-                "Current_Task": lambda a: a.current_task.id if hasattr(a, "current_task") and a.current_task else None,
+                "Current_Task": lambda a: a.task_tracker.current_task if hasattr(a, "task_tracker") and a.task_tracker.current_task else None,
+                "Current_Subtask": lambda a: a.task_tracker.current_subtask if hasattr(a, "task_tracker") and a.task_tracker.current_subtask else None,
             }
         )
 
@@ -94,7 +96,7 @@ class EngineeringTeamModel(mesa.Model):
                 self.steps,
                 "initial_agent_setup",
                 {
-                    agent.unique_id: [task.name for task in agent.assigned_tasks] for agent in self.agents 
+                    agent.unique_id: [task.name for task in agent.task_tracker.assigned_tasks] for agent in self.agents 
                 }
             )
         else:
@@ -178,7 +180,7 @@ class EngineeringTeamModel(mesa.Model):
                 task = tasks[i]
                 task.assigned_to = engineer.unique_id
                 task.status = TaskStatus.BACKLOG
-                engineer.assigned_tasks.append(task)
+                engineer.task_tracker.assigned_tasks.append(task)
                 print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
         
         # Then randomly assign remaining tasks
@@ -186,7 +188,7 @@ class EngineeringTeamModel(mesa.Model):
             engineer = self.random.choice(engineers)
             task.assigned_to = engineer.unique_id
             task.status = TaskStatus.BACKLOG
-            engineer.assigned_tasks.append(task)
+            engineer.task_tracker.assigned_tasks.append(task)
             print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
 
     def _generate_new_task(self):

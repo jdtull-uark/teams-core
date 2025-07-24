@@ -1,28 +1,26 @@
 from typing import List, Optional, Dict, Any, TYPE_CHECKING # NEW: Import TYPE_CHECKING
 from ..types import *
 from .base import BaseAgent
-from ..rules.psychological_safety_rule import PsychologicalSafetyRule
-from .components.interaction_handler import InteractionMixin, InteractionRecord
+from .components.interaction_handler import InteractionHandler, InteractionRecord
+from .components.task_tracker import TaskTracker, TaskStatus, SubTaskStatus
+from .components.knowledge_manager import KnowledgeManager
+from .components.knowledge_network import KnowledgeNetwork
 import random
 import math
 
 if TYPE_CHECKING:
     from ..model import EngineeringTeamModel
 
-class EngineerAgent(BaseAgent, InteractionMixin):
+class EngineerAgent(BaseAgent):
     """Represents an individual engineer."""
     
     def __init__(self, unique_id: int, model: 'EngineeringTeamModel'):
         """Initialize an EngineerAgent."""
-        super().__init__(unique_id, model)
-        
-        # Task management
-        self.assigned_tasks: List[Task] = []  # Tasks assigned to this engineer
-        self.current_task: Optional[Task] = None
-        self.current_subtask: Optional[SubTask] = None
-        self.completed_tasks: List[str] = []
-        self.completed_subtasks: List[str] = []
-        self.all_tasks_completed: bool = False
+        super().__init__(model)
+        self.knowledge_manager = KnowledgeManager(self)
+        self.knowledge_network = KnowledgeNetwork()
+        self.interaction_handler = InteractionHandler(self)
+        self.task_tracker = TaskTracker(self)
         
         # Psychological Safety
         self.pps: float = random.uniform(0.0, 1.0) # perceived psychological safety
@@ -131,8 +129,8 @@ class EngineerAgent(BaseAgent, InteractionMixin):
 
     def step(self):
         """Engineer step behavior."""
-        if not self.all_tasks_completed:
-            self.work_on_task()
+        if not self.task_tracker.all_tasks_completed:
+            self.task_tracker.work_on_task()
         else:
             self._log_history("all_tasks_completed", {"engineer_id": self.unique_id})
 
@@ -146,8 +144,8 @@ class EngineerAgent(BaseAgent, InteractionMixin):
             elif self.seeking_knowledge:
                 recipient = self.random.choice(neighbors)
                 if isinstance(recipient, EngineerAgent):
-                    self.log_interaction(recipient, interaction_type="knowledge_request")
-            elif self.current_subtask:
+                    self.initiate_interaction(recipient, interaction_type="knowledge_request")
+            elif self.task_tracker.current_subtask:
                 recipient = self.random.choice(neighbors)
                 if isinstance(recipient, EngineerAgent):
                     self.log_interaction(recipient, interaction_type="collaboration")
@@ -162,7 +160,15 @@ class EngineerAgent(BaseAgent, InteractionMixin):
                 
         self.take_random_step()
 
-
+        if self.model.steps % 10 == 0:
+            # Log current state every 10 steps
+            self._log_history("check-in", {
+                "step": self.model.steps,
+                "current_task": self.task_tracker.current_task.id if self.task_tracker.current_task else None,
+                "task_progress": self.task_tracker.current_task.get_progress() if self.task_tracker.current_task else None,
+                "current_subtask": self.task_tracker.current_subtask.id if self.task_tracker.current_subtask else None,
+                "subtask_progress": self.task_tracker.current_subtask.progress if self.task_tracker.current_subtask else None,
+            })
 
     def take_random_step(self):
         """Take a random step in the grid."""
@@ -287,3 +293,20 @@ class EngineerAgent(BaseAgent, InteractionMixin):
                 return True
         
         return False
+    
+    def initiate_interaction(self, recipient_agent, interaction_type, details = None):
+        super().initiate_interaction(recipient_agent, interaction_type, details)
+        return self.interaction_handler.initiate_interaction(recipient_agent, interaction_type, details)
+
+    def receive_interaction(self, sender_agent, interaction_type, details = None):
+        super().receive_interaction(sender_agent, interaction_type, details)
+        return self.interaction_handler.receive_interaction(sender_agent, interaction_type, details)
+    
+    def __getattr__(self, name):
+        # Try _b first, then _c
+        for obj in [self.interaction_handler, self.knowledge_manager, self.knowledge_network, self.task_tracker]:
+            try:
+                return getattr(obj, name)
+            except AttributeError:
+                continue
+        raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
