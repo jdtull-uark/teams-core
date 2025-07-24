@@ -94,7 +94,7 @@ class EngineeringTeamModel(mesa.Model):
                 self.steps,
                 "initial_agent_setup",
                 {
-                    agent.agent_id: [task.name for task in agent.assigned_tasks] for agent in self.agents 
+                    agent.unique_id: [task.name for task in agent.assigned_tasks] for agent in self.agents 
                 }
             )
         else:
@@ -127,18 +127,18 @@ class EngineeringTeamModel(mesa.Model):
 
     def _create_agents(self):
         """Create engineer and manager agents."""
-        agent_id = 0
+        unique_id = 0
         
         # Create engineers
         for i in range(self.num_engineers):
             
-            agent = EngineerAgent(agent_id, self)
+            agent = EngineerAgent(unique_id, self)
             agent.learned_knowledge = set(random.sample(self.knowledge_space, k=random.randint(1, len(self.knowledge_space))))
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             self.grid.place_agent(agent, (x, y))
 
-            agent_id += 1
+            unique_id += 1
 
     def _create_knowledge_space(self, size: int = 20):
         """Create knowledge sets for the model."""
@@ -176,18 +176,18 @@ class EngineeringTeamModel(mesa.Model):
         for i, engineer in enumerate(engineers):
             if i < len(tasks):
                 task = tasks[i]
-                task.assigned_to = engineer.agent_id
+                task.assigned_to = engineer.unique_id
                 task.status = TaskStatus.BACKLOG
                 engineer.assigned_tasks.append(task)
-                print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
+                print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
         
         # Then randomly assign remaining tasks
         for task in tasks[len(engineers):]:
             engineer = self.random.choice(engineers)
-            task.assigned_to = engineer.agent_id
+            task.assigned_to = engineer.unique_id
             task.status = TaskStatus.BACKLOG
             engineer.assigned_tasks.append(task)
-            print(f"Assigned {task.name} to Engineer {engineer.agent_id}")
+            print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
 
     def _generate_new_task(self):
         """Generates a new task occasionally."""
@@ -219,9 +219,9 @@ class EngineeringTeamModel(mesa.Model):
     def is_done(self):
         return all(task.status == TaskStatus.COMPLETED for task in self.tasks.values())
     
-    def get_agent_by_id(self, agent_id: str):
+    def get_agent_by_id(self, unique_id: str):
         """Get an agent by its unique ID."""
         for agent in self.agents:
-            if agent.agent_id == agent_id:
+            if agent.unique_id == unique_id:
                 return agent
         return None

@@ -34,7 +34,7 @@ class EngineerAgent(BaseAgent):
 
         # Knowledge system
         self.learned_knowledge: set[str] = {}  # Concepts the engineer knows
-        self.knowledge_network: Dict[int, set[str]] = {}  # { agent_id : {"K001", "K002", ...}, }
+        self.knowledge_network: Dict[int, set[str]] = {}  # { unique_id : {"K001", "K002", ...}, }
         self.concept_learning_progress: Dict[str, float] = {} # {concept_id: progress (0-1)}
 
         # Interaction tracking
@@ -268,9 +268,9 @@ class EngineerAgent(BaseAgent):
             elif self.knows_agent_with_knowledge(concept):
                 # If we know an agent has this knowledge, update the knowledge network
                 for agent in sender.get_agents_with_knowledge(concept):
-                    sender.knowledge_network.setdefault(agent.agent_id, set()).add(concept)
+                    sender.knowledge_network.setdefault(agent.unique_id, set()).add(concept)
             else:
-                sender.knowledge_network.setdefault(self.agent_id, set()).add(random.choice(list(self.learned_knowledge)))
+                sender.knowledge_network.setdefault(self.unique_id, set()).add(random.choice(list(self.learned_knowledge)))
         
         
     def handle_knowledge_request(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
@@ -283,7 +283,7 @@ class EngineerAgent(BaseAgent):
         """Initiate a knowledge share interaction."""
         return {
             "interaction_type": InteractionType.KNOWLEDGE_SHARE,
-            "recipient": recipient.agent_id,
+            "recipient": recipient.unique_id,
             "shared_concept": concept,
         }      
 
@@ -294,13 +294,13 @@ class EngineerAgent(BaseAgent):
             if concept not in self.learned_knowledge:
                 self.learned_knowledge.add(concept)
                 # Update knowledge network
-                self.knowledge_network.setdefault(sender.agent_id, set()).add(concept)
+                self.knowledge_network.setdefault(sender.unique_id, set()).add(concept)
                 # Optionally, log the knowledge share
                 self._log_history("knowledge_share_received", {
-                    "sender": sender.agent_id,
+                    "sender": sender.unique_id,
                     "shared_concept": concept
                 })
-            sender.knowledge_network.setdefault(self.agent_id, set()).add(concept)
+            sender.knowledge_network.setdefault(self.unique_id, set()).add(concept)
         
 
     def handle_knowledge_share(self, recipient: 'EngineerAgent', details: Dict[str, Any]):
@@ -314,10 +314,10 @@ class EngineerAgent(BaseAgent):
         pass
 
     
-    def knows_agent_has_knowledge(self, agent_id: int, concept: str) -> bool:
+    def knows_agent_has_knowledge(self, unique_id: int, concept: str) -> bool:
         """Check if we know that a specific agent has a specific knowledge concept."""
-        return (agent_id in self.knowledge_network and 
-                concept in self.knowledge_network[agent_id])
+        return (unique_id in self.knowledge_network and 
+                concept in self.knowledge_network[unique_id])
 
     def knows_agent_with_knowledge(self, concept: str) -> bool:
         """Check if we know any agent has a specific knowledge concept."""
@@ -372,8 +372,8 @@ class EngineerAgent(BaseAgent):
         nearest_agent = None
         min_distance = float('inf')
         
-        for agent_id in agents_with_knowledge:
-            target_agent = self.model.get_agent_by_id(agent_id)
+        for unique_id in agents_with_knowledge:
+            target_agent = self.model.get_agent_by_id(unique_id)
             if target_agent and target_agent.pos:
                 distance = self.model.grid.get_distance(self.pos, target_agent.pos)
                 if distance < min_distance:
@@ -390,8 +390,8 @@ class EngineerAgent(BaseAgent):
         nearest_agent = None
         min_distance = float('inf')
         
-        for agent_id in targets:
-            target_agent = self.model.get_agent_by_id(agent_id)
+        for unique_id in targets:
+            target_agent = self.model.get_agent_by_id(unique_id)
             if target_agent and target_agent.pos:
                 # Calculate Manhattan or Euclidean distance
                 dx = abs(self.pos[0] - target_agent.pos[0])
@@ -417,8 +417,8 @@ class EngineerAgent(BaseAgent):
             best_distance = float('inf')
             
             for step in possible_steps:
-                dx = abs(self.pos[0] - target.pos[0])
-                dy = abs(self.pos[1] - target.pos[1])
+                dx = abs(step[0] - target.pos[0])
+                dy = abs(step[1] - target.pos[1])
                 distance = math.sqrt(dx**2 + dy**2)
                 if distance < best_distance:
                     best_distance = distance

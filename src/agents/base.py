@@ -11,7 +11,7 @@ class BaseAgent(mesa.Agent):
     
     def __init__(self, unique_id: int, model: 'EngineeringTeamModel'): # Keep as string literal for forward reference
         super().__init__(model)
-        self.agent_id = unique_id
+        self.unique_id = unique_id
         self.name = f"Agent {unique_id}"
         self.attributes: Dict[str, Any] = {}
         self.history: List[Dict[str, Any]] = []
@@ -19,7 +19,7 @@ class BaseAgent(mesa.Agent):
     @property
     def __dict__(self):
         original_dict = super().__dict__
-        original_dict['agent_id'] = self.agent_id
+        original_dict['unique_id'] = self.unique_id
         original_dict['attributes'] = self.attributes
         original_dict['history'] = self.history
         return {k: v for k, v in original_dict.items() if k != 'model'}
@@ -32,7 +32,7 @@ class BaseAgent(mesa.Agent):
         self.history.append(log_entry)
         
         log.log_agent_action(
-            self.agent_id,
+            self.unique_id,
             self.model.steps,
             action,
             details
