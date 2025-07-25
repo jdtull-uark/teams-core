@@ -177,19 +177,13 @@ class EngineeringTeamModel(mesa.Model):
         # First, give each engineer one task
         for i, engineer in enumerate(engineers):
             if i < len(tasks):
-                task = tasks[i]
-                task.assigned_to = engineer.unique_id
-                task.status = TaskStatus.BACKLOG
-                engineer.task_tracker.assigned_tasks.append(task)
-                print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
+                engineer.task_tracker.assign_task(tasks[i])
         
         # Then randomly assign remaining tasks
         for task in tasks[len(engineers):]:
             engineer = self.random.choice(engineers)
-            task.assigned_to = engineer.unique_id
-            task.status = TaskStatus.BACKLOG
-            engineer.task_tracker.assigned_tasks.append(task)
-            print(f"Assigned {task.name} to Engineer {engineer.unique_id}")
+            engineer.task_tracker.assign_task(task)
+            print(f"Assigned {task.name} to Engineer {engineer.name}")
 
     def _generate_new_task(self):
         """Generates a new task occasionally."""
