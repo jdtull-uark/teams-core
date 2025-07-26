@@ -2,7 +2,7 @@ import mesa
 import random
 from statistics import mean
 from typing import Dict
-from .types import Task, TaskStatus, SubTask, SubTaskStatus
+from .agents.components.task_tracker import Task, TaskStatus, SubTask, SubTaskStatus
 from .agents import EngineerAgent, ManagerAgent
 from .agents.components.task_tracker import Task, SubTask, TaskStatus, SubTaskStatus
 from .rules import PsychologicalSafetyRule

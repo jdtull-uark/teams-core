@@ -31,11 +31,6 @@ class EngineerAgent(BaseAgent):
         self.motivation: float = random.uniform(0.1, 1.0)  # Motivation level (0.5 to 1.0)        
         self.availability: float = random.uniform(0.5, 1.0)  # Availability for tasks (0.5 to 1.0)
 
-        # Knowledge system
-        self.learned_knowledge: set[str] = {}  # Concepts the engineer knows
-        self.knowledge_network: Dict[int, set[str]] = {}  # { unique_id : {"K001", "K002", ...}, }
-        self.concept_learning_progress: Dict[str, float] = {} # {concept_id: progress (0-1)}
-
         # Interaction tracking
         self.interaction_history: List[InteractionRecord] = []
         self.help_requests_made: int = 0
@@ -46,7 +41,7 @@ class EngineerAgent(BaseAgent):
         self.focus_time: int = 0  # Time spent on current task without interruption
     
         self.seeking_knowledge: bool = False  # Whether the engineer is actively seeking knowledge
-        self.seeking_agent = False
+        self.seeking_agent: bool = False
         self.seeking_agent_targets: List[EngineerAgent] = []
 
         
@@ -178,54 +173,6 @@ class EngineerAgent(BaseAgent):
             self.model.grid.move_agent(self, new_position)
 
     
-    def knows_agent_has_knowledge(self, unique_id: int, concept: str) -> bool:
-        """Check if we know that a specific agent has a specific knowledge concept."""
-        return (unique_id in self.knowledge_network and 
-                concept in self.knowledge_network[unique_id])
-
-    def knows_agent_with_knowledge(self, concept: str) -> bool:
-        """Check if we know any agent has a specific knowledge concept."""
-        return any(concept in concepts for concepts in self.knowledge_network.values())
-    
-    def get_agents_with_knowledge(self, concept: str) -> List[int]:
-        """Get list of agent IDs that we know have a specific knowledge concept."""
-        return [agent for agent, concepts in self.knowledge_network.items() 
-                if concept in concepts]
-    
-    def find_agents_with_needed_knowledge(self) -> List[int]:
-        """Find agents who have knowledge needed for current subtask."""
-        if not self.current_subtask:
-            return []
-        
-        potential_targets = []
-        needed_knowledge = self.current_subtask.required_knowledge
-        
-        for concept in needed_knowledge:
-            # Only look for knowledge we don't already have
-            if concept not in self.learned_knowledge:
-                # Find agents we know have this knowledge
-                agents_with_knowledge = self.get_agents_with_knowledge(concept)
-                potential_targets.extend(agents_with_knowledge)
-        
-        # Remove duplicates and return
-        return list(set(potential_targets))
-    
-    def get_missing_knowledge(self) -> List[str]:
-        """Get a list of knowledge concepts needed for the current subtask."""
-
-        if not self.current_subtask:
-            return []
-        
-        missing_knowledge = []
-        needed_knowledge = self.current_subtask.required_knowledge
-
-        for concept in needed_knowledge:
-            # Only include concepts we don't already know
-            if concept not in self.learned_knowledge:
-                missing_knowledge.append(concept)
-
-        return missing_knowledge
-    
     def get_closest_agent_with_knowledge(self, concept: str) -> Optional['EngineerAgent']:
         """Get the closest agent who has a specific knowledge concept."""
         agents_with_knowledge = self.get_agents_with_knowledge(concept)
@@ -295,11 +242,9 @@ class EngineerAgent(BaseAgent):
         return False
     
     def initiate_interaction(self, recipient_agent, interaction_type, details = None):
-        super().initiate_interaction(recipient_agent, interaction_type, details)
         return self.interaction_handler.initiate_interaction(recipient_agent, interaction_type, details)
 
     def receive_interaction(self, sender_agent, interaction_type, details = None):
-        super().receive_interaction(sender_agent, interaction_type, details)
         return self.interaction_handler.receive_interaction(sender_agent, interaction_type, details)
     
     def __getattr__(self, name):

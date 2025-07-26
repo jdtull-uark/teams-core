@@ -23,7 +23,6 @@ class InteractionHandler:
         details["recipient_agent"] = recipient_agent
         details["interaction_type"] = interaction_type
         details["interaction_duration"] = random.uniform(0.5, 10)
-        details[""]
 
     def receive_interaction(self, sender_agent: 'EngineerAgent', interaction_type, details: Dict[str, Any] = None):
         pass

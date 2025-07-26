@@ -32,21 +32,25 @@ class Task:
     assigned_to: Optional[str] = None
     difficulty: int = field(default_factory=lambda: random.randint(1, 10))
     subtasks: List['SubTask'] = field(default_factory=list)
+    start_step: int = 0
+    stop_step: int = 0
 
     def get_progress(self) -> float:
         completed_subtasks = len([task for task in self.subtasks if task.status == "completed"])
         return completed_subtasks / self.difficulty
 
-    def start(self):
+    def start(self, step: int = None):
         """Start the task by changing status to IN_PROGRESS"""
         if self.status == TaskStatus.BACKLOG:
+            if step: self.start_step = step
             self.status = TaskStatus.IN_PROGRESS
         else:
             raise ValueError(f"Cannot start task with status {self.status}")
 
-    def complete(self):
+    def complete(self, step: int = None):
         """Complete the task by changing status to COMPLETED"""
         if self.status == TaskStatus.IN_PROGRESS:
+            if step: self.stop_step = step
             self.status = TaskStatus.COMPLETED
         else:
             raise ValueError(f"Cannot complete task with status {self.status}")
@@ -78,27 +82,24 @@ class SubTask:
     difficulty: int = field(default_factory=lambda: random.randint(1, 10))
     steps_completed: int = 0
     progress: float = 0.0
+    start_step: int = 0
+    stop_step: int = 0
 
     def is_complete(self) -> bool:
         """Check if the subtask is completed"""
         return self.status == SubTaskStatus.COMPLETED
-
-    def can_start(self, completed_subtasks: List[str]) -> bool:
-        return all(dep_id in completed_subtasks for dep_id in self.dependencies)
     
-    def start(self, completed_subtasks: List[str] = None):
+    def start(self, step: int = None):
         """Start the subtask"""
-        
-        if not self.can_start(completed_subtasks):
-            raise ValueError("Cannot start: dependencies not met")
-        
         if self.status == SubTaskStatus.NOT_STARTED:
+            if step: self.start_step = step
             self.status = SubTaskStatus.IN_PROGRESS
         else:
             raise ValueError(f"Cannot start subtask with status {self.status}")
 
-    def complete(self):
+    def complete(self, step: int = None):
         """Mark the subtask as completed"""
+        if step: self.start_step = step
         self.status = SubTaskStatus.COMPLETED
 
     def pause(self):
@@ -140,7 +141,7 @@ class TaskTracker:
         next_task = self.get_next_available_task()
         if next_task:
             self.current_task = next_task
-            self.current_task.start(self.agent.model.steps)
+            self.current_task.start(step = self.agent.model.steps)
             self.agent._log_history("task_started", {"task_id": self.current_task.id})
             return True
         
@@ -163,10 +164,9 @@ class TaskTracker:
         
         # If no active subtask, start the first available unstarted subtask
         for subtask in self.current_task.subtasks:
-            if (subtask.status == SubTaskStatus.NOT_STARTED and 
-                subtask.can_start(self.completed_subtasks)):
+            if (subtask.status == SubTaskStatus.NOT_STARTED):
                 try:
-                    subtask.start(self.completed_subtasks, step=self.agent.model.steps)
+                    subtask.start(step=self.agent.model.steps)
                     return subtask
                 except ValueError:
                     continue
