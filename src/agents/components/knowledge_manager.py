@@ -129,22 +129,8 @@ class KnowledgeManager:
     def get_knowledge_stats(self) -> Dict[str, any]:
         """Get statistics about the agent's knowledge."""
         return {
-            "learned_concepts": len(self.learned_knowledge),
-            "concepts_in_progress": len(self.concept_learning_progress),
-            "network_agents": self.agent.get_network_size(),
-            "network_knowledge_entries": self.agent.get_total_knowledge_entries(),
             "learned_knowledge": list(self.learned_knowledge),
+            "concepts_in_progress": len(self.concept_learning_progress),
             "learning_progress": self.concept_learning_progress.copy()
         }
 
-    def knows_agent_with_knowledge(self, concept: str) -> bool:
-        """Check if we know any agent has a specific knowledge concept."""
-        return self.agent.knows_any_agent_with_knowledge(concept)
-
-    def get_agents_with_knowledge(self, concept: str) -> List[str]:
-        """Get list of agent IDs that we know have a specific knowledge concept."""
-        return self.agent.get_agents_with_knowledge(concept)
-
-    def update_agent_knowledge(self, unique_id: str, concept: str) -> None:
-        """Update our knowledge of what another agent knows."""
-        self.agent.add_agent_knowledge(unique_id, concept)

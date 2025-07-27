@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any, TYPE_CHECKING # NEW: Import TYPE_CHECKING
 from ..types import *
 from .base import BaseAgent
-from .components.interaction_handler import InteractionHandler, InteractionRecord
+from .components.interaction_handler import Communicator, InteractionRecord
 from .components.task_tracker import TaskTracker, TaskStatus, SubTaskStatus
 from .components.knowledge_manager import KnowledgeManager
 from .components.knowledge_network import KnowledgeNetwork
@@ -19,7 +19,7 @@ class EngineerAgent(BaseAgent):
         super().__init__(model)
         self.knowledge_manager = KnowledgeManager(self)
         self.knowledge_network = KnowledgeNetwork()
-        self.interaction_handler = InteractionHandler(self)
+        self.interaction_handler = Communicator(self)
         self.task_tracker = TaskTracker(self)
         
         # Psychological Safety
@@ -135,7 +135,7 @@ class EngineerAgent(BaseAgent):
             if any(agent in neighbors for agent in self.seeking_agent_targets):
                 recipient = [agent for agent in neighbors if agent in self.seeking_agent_targets][0]
                 if isinstance(recipient, EngineerAgent):
-                    self.log_interaction(recipient, interaction_type="help_request")
+                    self.initiate_interaction(recipient, interaction_type="help_request")
             elif self.seeking_knowledge:
                 recipient = self.random.choice(neighbors)
                 if isinstance(recipient, EngineerAgent):
@@ -143,10 +143,9 @@ class EngineerAgent(BaseAgent):
             elif self.task_tracker.current_subtask:
                 recipient = self.random.choice(neighbors)
                 if isinstance(recipient, EngineerAgent):
-                    self.log_interaction(recipient, interaction_type="collaboration")
-        elif self.seeking_agent and self.seeking_agent_targets:
-            # If seeking agent is enabled, try to move toward a target
-            target = self.get_closest_agent(self.seeking_agent_targets) if self.current_subtask else None
+                    self.initiate_interaction(recipient, interaction_type="collaboration")
+        elif self.searching_agents and self.searching_agents_targets:
+            target = self.get_closest_agent(self.searching_agents_targets) if self.current_subtask else None
             if target:
                 if not self.move_toward_agent(target):
                     # If we can't move toward the target, just take a random step
@@ -167,32 +166,11 @@ class EngineerAgent(BaseAgent):
 
     def take_random_step(self):
         """Take a random step in the grid."""
-        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=True)
+        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
         if possible_steps:
             new_position = self.random.choice(possible_steps)
             self.model.grid.move_agent(self, new_position)
 
-    
-    def get_closest_agent_with_knowledge(self, concept: str) -> Optional['EngineerAgent']:
-        """Get the closest agent who has a specific knowledge concept."""
-        agents_with_knowledge = self.get_agents_with_knowledge(concept)
-        
-        if not agents_with_knowledge:
-            return None
-        
-        nearest_agent = None
-        min_distance = float('inf')
-        
-        for unique_id in agents_with_knowledge:
-            target_agent = self.model.get_agent_by_id(unique_id)
-            if target_agent and target_agent.pos:
-                distance = self.model.grid.get_distance(self.pos, target_agent.pos)
-                if distance < min_distance:
-                    min_distance = distance
-                    nearest_agent = target_agent
-        
-        return nearest_agent
-    
     def get_closest_agent(self, targets: List['EngineerAgent']) -> Optional['EngineerAgent']:
         """Get the closest agent who has a specific knowledge concept."""
         if not targets:
@@ -242,9 +220,11 @@ class EngineerAgent(BaseAgent):
         return False
     
     def initiate_interaction(self, recipient_agent, interaction_type, details = None):
+        super().initiate_interaction(recipient_agent, interaction_type, details)
         return self.interaction_handler.initiate_interaction(recipient_agent, interaction_type, details)
 
     def receive_interaction(self, sender_agent, interaction_type, details = None):
+        super().receive_interaction(sender_agent, interaction_type, details)
         return self.interaction_handler.receive_interaction(sender_agent, interaction_type, details)
     
     def __getattr__(self, name):
