@@ -1,0 +1,48 @@
+# Example configuration for engineering team simulation
+num_steps: 200
+grid_width: 15
+grid_height: 15
+enable_logging: true
+
+agents:
+  EngineerAgent:
+    count: 8
+    behaviors:
+      - type: WorkBehavior
+      - type: LearnBehavior
+      - type: CollaborationBehavior
+      - type: MovementBehavior
+  
+  ManagerAgent:
+    count: 1
+    behaviors: []
+
+interaction_handlers:
+  - name: knowledge_handler
+    type: KnowledgeShareHandler
+  - name: help_handler
+    type: HelpRequestHandler
+
+task_generators:
+  - type: EngineeringTaskGenerator
+    params:
+      task_creation_rate: 0.03
+      max_tasks: 30
+
+rules:
+  - type: PsychologicalSafetyRule
+    params:
+      base_change_rate: 0.02
+      threshold: 0.75
+  - type: ProductivityRule
+
+model_reporters:
+  Completed_Tasks: "len([t for t in m.tasks.values() if t.status.value == 'completed'])"
+  Active_Tasks: "len([t for t in m.tasks.values() if t.status.value == 'in_progress'])"
+  Psychological_Safety: "m.psychological_safety"
+  Average_Knowledge: "sum([len(getattr(a, 'learned_knowledge', set())) for a in m.agents]) / len(m.agents) if m.agents else 0"
+
+agent_reporters:
+  PPS: "getattr(a, 'perceived_psychological_safety', None)"
+  Knowledge_Count: "len(getattr(a, 'learned_knowledge', set()))"
+  Work_Efficiency: "getattr(a, 'work_efficiency', None)"
