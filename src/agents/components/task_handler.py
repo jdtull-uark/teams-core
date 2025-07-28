@@ -110,11 +110,10 @@ class SubTask:
             raise ValueError(f"Cannot pause subtask with status {self.status}")
 
 
-class TaskTracker:
+class TaskHandler:
     """Handles all task and subtask management for an engineer agent."""
     
-    def __init__(self, agent: 'EngineerAgent'):
-        self.agent = agent
+    def __init__(self):
         self.assigned_tasks: List[Task] = []
         self.current_task: Optional[Task] = None
         self.current_subtask: Optional[SubTask] = None
@@ -124,7 +123,7 @@ class TaskTracker:
 
     def assign_task(self, task = Task):
         self.assigned_tasks.append(task)    
-        task.assign(self.agent.name)
+        task.assign(self.name)
     
     def get_next_available_task(self) -> Optional[Task]:
         """Get the next available task from the backlog."""
@@ -141,8 +140,8 @@ class TaskTracker:
         next_task = self.get_next_available_task()
         if next_task:
             self.current_task = next_task
-            self.current_task.start(step = self.agent.model.steps)
-            self.agent._log_history("task_started", {"task_id": self.current_task.id})
+            self.current_task.start(step = self.model.steps)
+            self._log_history("task_started", {"task_id": self.current_task.id})
             return True
         
         return False
@@ -166,7 +165,7 @@ class TaskTracker:
         for subtask in self.current_task.subtasks:
             if (subtask.status == SubTaskStatus.NOT_STARTED):
                 try:
-                    subtask.start(step=self.agent.model.steps)
+                    subtask.start(step=self.model.steps)
                     return subtask
                 except ValueError:
                     continue
@@ -178,14 +177,14 @@ class TaskTracker:
         if not self.current_subtask:
             return
         
-        self.agent._log_history("work_on_subtask", {
+        self._log_history("work_on_subtask", {
             "subtask_id": self.current_subtask.id,
             "progress": self.current_subtask.progress
         })
         
-        if self.agent.knowledge_manager.has_all_required_knowledge():
+        if self.has_all_required_knowledge():
             # If all required knowledge is known, work on the subtask
-            progress_increment = self.agent.work_efficiency * 0.1
+            progress_increment = self.work_efficiency * 0.1
             self.current_subtask.progress += progress_increment
             
             if self.current_subtask.progress >= 1.0:
@@ -202,20 +201,20 @@ class TaskTracker:
         try:
             self.current_subtask.complete()
             self.completed_subtasks.append(self.current_subtask.id)
-            self.agent._log_history("subtask_completed", {
+            self._log_history("subtask_completed", {
                 "subtask_id": self.current_subtask.id
             })
             
             # Reset seeking behavior
-            self.agent.seeking_knowledge = False
-            self.agent.searching_agents = False
-            self.agent.searching_agents_targets = []
+            self.seeking_knowledge = False
+            self.searching_agents = False
+            self.searching_agents_targets = []
             
             # Move to next subtask or complete task
             self.current_subtask = None
             self.check_task_completion()
         except ValueError as e:
-            self.agent._log_history("subtask_completion_failed", {
+            self._log_history("subtask_completion_failed", {
                 "subtask_id": self.current_subtask.id,
                 "error": str(e)
             })
@@ -230,17 +229,17 @@ class TaskTracker:
             try:
                 self.current_task.complete()
                 self.completed_tasks.append(self.current_task.id)
-                self.agent._log_history("task_completed", {"task_id": self.current_task.id})
+                self._log_history("task_completed", {"task_id": self.current_task.id})
                 self.current_task = None
                 
                 # Check if all tasks are completed
                 if all(task.status == TaskStatus.COMPLETED for task in self.assigned_tasks):
                     self.all_tasks_completed = True
-                    self.agent._log_history("all_tasks_completed", {
-                        "engineer_id": self.agent.unique_id
+                    self._log_history("all_tasks_completed", {
+                        "engineer_id": self.unique_id
                     })
             except ValueError as e:
-                self.agent._log_history("task_completion_failed", {
+                self._log_history("task_completion_failed", {
                     "task_id": self.current_task.id,
                     "error": str(e)
                 })
@@ -250,21 +249,21 @@ class TaskTracker:
         if not self.current_subtask:
             return
         
-        missing_knowledge = self.agent.knowledge_manager.get_missing_knowledge(self.current_subtask.required_knowledge)
+        missing_knowledge = self.get_missing_knowledge(self.current_subtask.required_knowledge)
         if not missing_knowledge:
             return
         
-        self.agent.seeking_knowledge = True
+        self.seeking_knowledge = True
         
         # Try to learn each missing concept
         for concept in missing_knowledge:
-            if self.agent.knowledge_manager.knows_agent_with_knowledge(concept):
-                self.agent.searching_agents = True
-                self.agent.searching_agents_targets = (
-                    self.agent.knowledge_manager.find_agents_with_needed_knowledge()
+            if self.knowledge_registry.knows_any_agent_with_knowledge(concept):
+                self.searching_agents = True
+                self.searching_agents_targets = (
+                    self.knowledge_registry.find_agents_with_needed_knowledge()
                 )
             
-            self.agent.knowledge_manager.learn_concept(concept)
+            self.learn_concept(concept)
     
     def work_on_task(self):
         """Main work method - coordinates task and subtask work."""
@@ -282,7 +281,7 @@ class TaskTracker:
     
     def assign_task(self, task: Task):
         """Assign a new task to this agent."""
-        task.assign(self.agent.unique_id)
+        task.assign(self.unique_id)
         self.assigned_tasks.append(task)
     
     def get_progress_summary(self) -> dict:

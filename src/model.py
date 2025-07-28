@@ -2,9 +2,9 @@ import mesa
 import random
 from statistics import mean
 from typing import Dict
-from .agents.components.task_tracker import Task, TaskStatus, SubTask, SubTaskStatus
+from .agents.components.task_handler import Task, TaskStatus, SubTask, SubTaskStatus
 from .agents import EngineerAgent, ManagerAgent
-from .agents.components.task_tracker import Task, SubTask, TaskStatus, SubTaskStatus
+from .agents.components.task_handler import Task, SubTask, TaskStatus, SubTaskStatus
 from .rules import PsychologicalSafetyRule
 from .utils import log
 
@@ -62,8 +62,8 @@ class EngineeringTeamModel(mesa.Model):
             agent_reporters={
                 "PPS": lambda a: a.pps if hasattr(a, "pps") else None,
                 "Knowledge": lambda a: len(a.learned_knowledge) if hasattr(a, "learned_knowledge") else None,
-                "Current_Task": lambda a: a.task_tracker.current_task if hasattr(a, "task_tracker") and a.task_tracker.current_task else None,
-                "Current_Subtask": lambda a: a.task_tracker.current_subtask if hasattr(a, "task_tracker") and a.task_tracker.current_subtask else None,
+                "Current_Task": lambda a: a.current_task if hasattr(a, "current_task") and a.current_task else None,
+                "Current_Subtask": lambda a: a.current_subtask if hasattr(a, "current_task") and a.current_subtask else None,
             }
         )
 
@@ -96,7 +96,7 @@ class EngineeringTeamModel(mesa.Model):
                 self.steps,
                 "initial_agent_setup",
                 {
-                    agent.unique_id: [task.name for task in agent.task_tracker.assigned_tasks] for agent in self.agents 
+                    agent.unique_id: [task.name for task in agent.assigned_tasks] for agent in self.agents 
                 }
             )
         else:
@@ -134,7 +134,7 @@ class EngineeringTeamModel(mesa.Model):
         # Create engineers
         for i in range(self.num_engineers):
             
-            agent = EngineerAgent(unique_id, self)
+            agent = EngineerAgent(self)
             agent.learned_knowledge = set(random.sample(self.knowledge_space, k=random.randint(1, len(self.knowledge_space))))
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
@@ -177,12 +177,12 @@ class EngineeringTeamModel(mesa.Model):
         # First, give each engineer one task
         for i, engineer in enumerate(engineers):
             if i < len(tasks):
-                engineer.task_tracker.assign_task(tasks[i])
+                engineer.assign_task(tasks[i])
         
         # Then randomly assign remaining tasks
         for task in tasks[len(engineers):]:
             engineer = self.random.choice(engineers)
-            engineer.task_tracker.assign_task(task)
+            engineer.assign_task(task)
             print(f"Assigned {task.name} to Engineer {engineer.name}")
 
     def _generate_new_task(self):

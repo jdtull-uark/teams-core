@@ -6,7 +6,7 @@ from src.agents import EngineerAgent, ManagerAgent
 
 def agent_portrayal(agent):
     if isinstance(agent, EngineerAgent):
-        if agent.seeking_agent:
+        if agent.searching_agents:
             return {"color": "green"}
         elif agent.seeking_knowledge:
             return {"color": "orange"}

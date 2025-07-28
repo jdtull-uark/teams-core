@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class Communicator(ABC):
     """Handles all interaction logic for an engineer agent."""
     
-    def __init__(self, agent: 'BaseAgent'):
+    def __init__(self):
         self.interaction_history: List[InteractionRecord] = []
         self.help_requests_made: int = 0
         self.help_requests_received: int = 0
@@ -20,13 +20,14 @@ class Communicator(ABC):
         if not details:
             details = {}
         
-        details["initiating_agent"] = self.agent
+        details["initiating_agent"] = self
         details["recipient_agent"] = recipient_agent
         details["interaction_type"] = interaction_type
         details["interaction_duration"] = random.uniform(0.5, 10)
+        
+        recipient_agent.receive_interaction(initiating_agent=self, interaction_type=interaction_type, details=details)
 
-        return details
-
+    @abstractmethod
     def receive_interaction(self, initiating_agent: 'BaseAgent', interaction_type, details: Dict[str, Any] = None):
         pass
 
