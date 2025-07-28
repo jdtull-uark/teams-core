@@ -46,18 +46,16 @@ class BaseModel(mesa.Model):
         
         # Initialize components from config
         self._initialize_components()
-        
-        # Create agents from config
-        self._create_agents()
     
     def _setup_logging(self) -> None:
         """Set up logging system."""
         # Import and configure logging
-        from ..utils.logging import setup_logging
-        setup_logging(
+        from ..utils import logging
+        logging.setup_logging(
             log_file=self.config.log_file,
             log_level=self.config.log_level
         )
+        self._logger = logging.get_logger()
     
     def _setup_data_collection(self) -> None:
         """Set up data collection based on configuration."""
@@ -124,9 +122,6 @@ class BaseModel(mesa.Model):
                     behavior = registry.create_behavior(behavior_type, **behavior_params)
                     agent.add_behavior(behavior)
                 
-                # Add agent to model
-                self.add(agent)
-                
                 # Place agent in space if it has spatial behavior
                 if hasattr(agent, 'position') and agent.position is None:
                     x = self.random.randrange(self.space.width)
@@ -144,12 +139,12 @@ class BaseModel(mesa.Model):
             return handler.handle_interaction(initiator, recipient, interaction_type, context)
         
         # Log unhandled interaction
-        if hasattr(self, 'log_model_event'):
-            self.log_model_event("unhandled_interaction", {
-                "type": interaction_type,
-                "initiator": initiator.unique_id,
-                "recipient": recipient.unique_id
-            })
+        from ..utils import logging
+        logging.log_model_event(self.step_count, "unhandled_interaction", {
+            "type": interaction_type,
+            "initiator": initiator.unique_id,
+            "recipient": recipient.unique_id
+        })
         
         return False
     
@@ -169,7 +164,8 @@ class BaseModel(mesa.Model):
                 # Handle new task (this would be domain-specific)
         
         # Step all agents
-        self.step()
+        for agent in self.agents:
+            agent.step()
         
         # Collect data
         if hasattr(self, 'datacollector'):
@@ -198,12 +194,10 @@ class BaseModel(mesa.Model):
     
     def log_model_event(self, event: str, details: Dict[str, Any] = None) -> None:
         """Log a model-level event."""
-        if hasattr(self, '_logger'):
-            from ..utils.logging import log_model_event
-            log_model_event(self.step_count, event, details)
+        from ..utils import logging
+        logging.log_model_event(self.step_count, event, details)
     
     def log_agent_action(self, agent_id: int, action: str, details: Dict[str, Any] = None) -> None:
         """Log an agent action."""
-        if hasattr(self, '_logger'):
-            from ..utils.logging import log_agent_action
-            log_agent_action(agent_id, self.step_count, action, details)
+        from ..utils import logging
+        logging.log_agent_action(agent_id, self.step_count, action, details)

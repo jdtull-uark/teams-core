@@ -1,6 +1,5 @@
 from src.framework.core.agent import BaseAgent
 from src.engineering.agents import EngineerAgent
-import random
 
 class CreativeEngineerAgent(EngineerAgent):
     '''An engineer with enhanced creativity and innovation capabilities.'''

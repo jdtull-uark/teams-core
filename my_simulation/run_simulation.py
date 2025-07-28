@@ -14,10 +14,12 @@ from src.engineering.utils import register_engineering_components
 def main():
     # Register all engineering components
     register_engineering_components()
+
+    directory = os.path.dirname(os.path.abspath(__file__))
     
     # Load configuration
-    config = ModelConfig.from_file("configs/default.yaml")
-    
+    config = ModelConfig.from_file(os.path.join(directory, "configs", "default.yaml"))
+
     # Add engineering-specific config
     config.__dict__['initial_tasks'] = 15
     config.__dict__['psychological_safety'] = 0.6
@@ -44,9 +46,9 @@ def main():
         print(f"Average knowledge per agent: {final_data['Average_Knowledge'].iloc[-1]:.1f}")
     
     # Save results
-    model.datacollector.get_model_vars_dataframe().to_csv("results/model_data.csv")
-    model.datacollector.get_agent_vars_dataframe().to_csv("results/agent_data.csv")
-    
+    model.datacollector.get_model_vars_dataframe().to_csv(os.path.join(directory, "results", "model_data.csv"))
+    model.datacollector.get_agent_vars_dataframe().to_csv(os.path.join(directory, "results", "agent_data.csv"))
+
     print("Results saved to results/ directory")
 
 if __name__ == "__main__":

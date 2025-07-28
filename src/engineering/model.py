@@ -30,6 +30,9 @@ class EngineeringTeamModel(BaseModel):
         
         # Assign initial tasks to engineers
         self._assign_initial_tasks()
+        
+        # Create agents from config
+        self._create_agents()
     
     def _create_knowledge_space(self, size: int = 20):
         """Create the knowledge space for the simulation."""
@@ -42,7 +45,7 @@ class EngineeringTeamModel(BaseModel):
         
         for i in range(num_tasks):
             difficulty = random.randint(1, 10)
-            task = Task(name=f"Initial Task {i+1}", difficulty=difficulty)
+            task = Task(name=f"Task {i+1}", difficulty=difficulty)
             
             # Create subtasks
             for j in range(difficulty):
@@ -54,7 +57,7 @@ class EngineeringTeamModel(BaseModel):
                 subtask = SubTask(
                     name=f"{task.name} - Subtask {j+1}",
                     required_knowledge=required_knowledge,
-                    difficulty=random.randint(1, 5)
+                    required_steps=random.randint(1, 5)
                 )
                 task.subtasks.append(subtask)
             

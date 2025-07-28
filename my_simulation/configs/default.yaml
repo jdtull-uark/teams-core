@@ -12,10 +12,6 @@ agents:
       - type: LearnBehavior
       - type: CollaborationBehavior
       - type: MovementBehavior
-  
-  ManagerAgent:
-    count: 1
-    behaviors: []
 
 interaction_handlers:
   - name: knowledge_handler

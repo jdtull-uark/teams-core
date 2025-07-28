@@ -63,10 +63,6 @@ agents:
       - type: LearnBehavior
       - type: CollaborationBehavior
       - type: MovementBehavior
-  
-  ManagerAgent:
-    count: 1
-    behaviors: []
 
 interaction_handlers:
   - name: knowledge_handler
@@ -121,7 +117,7 @@ def main():
     register_engineering_components()
     
     # Load configuration
-    config = ModelConfig.from_file("configs/default.yaml")
+    config = ModelConfig.from_file(os.path.join(os.path.dirname(__file__), "configs", "default.yaml"))
     
     # Add engineering-specific config
     config.__dict__['initial_tasks'] = 15

@@ -24,18 +24,52 @@ class TaskManager(Component):
     
     def step(self) -> None:
         """Execute task management logic."""
+        # Log agent status overview
+        task_overview = {
+            "agent_id": self.owner.unique_id,
+            "total_tasks": len(self.assigned_tasks),
+            "tasks": [{
+                "task_id": task.id,
+                "status": task.status.name,
+                "subtasks": [{
+                    "name": st.name,
+                    "status": st.status.name
+                } for st in task.subtasks]
+            } for task in self.assigned_tasks]
+        }
+        self.owner.log_action("agent_status", task_overview)
+        
         if not self.all_tasks_completed:
             self._work_on_current_task()
+        else:
+            self.owner.log_action("status", {"message": "All tasks completed"})
     
     def assign_task(self, task: Task) -> None:
         """Assign a new task."""
+        # Log initial state
+        self.owner.log_action("task_assigning", {
+            "task_id": task.id,
+            "agent_id": self.owner.unique_id,
+            "initial_status": task.status.name,
+            "subtasks": [(st.name, st.status.name) for st in task.subtasks]
+        })
+        
         self.assigned_tasks.append(task)
         task.assign(str(self.owner.unique_id))
+        
+        # Log final state
+        self.owner.log_action("task_assigned", {
+            "task_id": task.id,
+            "final_status": task.status.name,
+            "current_tasks": [(t.id, t.status.name) for t in self.assigned_tasks]
+        })
     
     def _work_on_current_task(self) -> None:
         """Work on the current task or start a new one."""
-        # Start a new task if needed
         if not self.current_task:
+            self.owner.log_action("task_management", {
+                "message": "No current task, attempting to start next task"
+            })
             self._start_next_task()
         
         if self.current_task and self.current_task.status == TaskStatus.IN_PROGRESS:
@@ -48,19 +82,51 @@ class TaskManager(Component):
     def _start_next_task(self) -> bool:
         """Start the next available task."""
         next_task = self._get_next_available_task()
+        
+        self.owner.log_action("task_selection", {
+            "next_task": next_task.id if next_task else None
+        })
+        
         if next_task:
+            self.owner.log_action("task_starting", {
+                "task_id": next_task.id,
+                "initial_status": next_task.status.name
+            })
+            
             self.current_task = next_task
-            self.current_task.start()
-            self.owner.log_action("task_started", {"task_id": self.current_task.id})
-            return True
+            try:
+                self.current_task.start()
+                self.owner.log_action("task_started", {
+                    "task_id": self.current_task.id,
+                    "final_status": self.current_task.status.name,
+                    "subtasks": [(st.name, st.status.name) for st in self.current_task.subtasks]
+                })
+                return True
+            except Exception as e:
+                self.owner.log_action("task_start_failed", {
+                    "task_id": next_task.id,
+                    "error": str(e)
+                })
+                return False
         return False
     
     def _get_next_available_task(self) -> Optional[Task]:
         """Get the next available task from backlog."""
-        return next(
+        self.owner.log_action("task_search", {
+            "assigned_tasks": [(t.id, t.status.name) for t in self.assigned_tasks]
+        })
+        
+        next_task = next(
             (task for task in self.assigned_tasks if task.status == TaskStatus.BACKLOG),
             None
         )
+        
+        self.owner.log_action("task_search_result", {
+            "found_task": next_task.id if next_task else None,
+            "task_status": next_task.status.name if next_task else None
+        })
+        
+        return next_task
     
     def _get_next_subtask(self) -> Optional[SubTask]:
         """Get the next subtask to work on."""
@@ -91,6 +157,9 @@ class TaskManager(Component):
     def _work_on_current_subtask(self) -> None:
         """Work on the current subtask."""
         if not self.current_subtask:
+            self.owner.log_action("subtask_work", {
+                "message": "No current subtask available"
+            })
             return
         
         # Check if we have required knowledge
@@ -108,11 +177,39 @@ class TaskManager(Component):
             return
         
         # Make progress on subtask
-        progress_increment = self.owner.work_efficiency * 0.1
-        self.current_subtask.progress += progress_increment
+        # One step is always attempted, work_efficiency affects how much progress is made
+        self.current_subtask.steps_completed += 1
+        step_effectiveness = self.owner.work_efficiency  # 0.5 to 1.5
+        
+        # Progress combines steps and efficiency
+        # An efficient agent (1.5) will complete a task in fewer steps
+        # An inefficient agent (0.5) will need more steps
+        effective_steps = self.current_subtask.steps_completed * step_effectiveness
+        self.current_subtask.progress = min(1.0, effective_steps / self.current_subtask.required_steps)
+        
+        self.owner.log_action("subtask_progress", {
+            "subtask_id": self.current_subtask.id,
+            "progress": self.current_subtask.progress,
+            "steps_completed": self.current_subtask.steps_completed,
+            "required_steps": self.current_subtask.required_steps,
+            "work_efficiency": self.owner.work_efficiency,
+            "effective_steps": effective_steps
+        })
         
         if self.current_subtask.progress >= 1.0:
+            self.owner.log_action("subtask_completion_check", {
+                "subtask_name": self.current_subtask.name,
+                "progress": self.current_subtask.progress,
+                "status": "ready_to_complete"
+            })
             self._complete_current_subtask()
+        else:
+            self.owner.log_action("subtask_completion_check", {
+                "subtask_name": self.current_subtask.name,
+                "progress": self.current_subtask.progress,
+                "remaining_steps": self.current_subtask.required_steps - effective_steps,
+                "status": "in_progress"
+            })
     
     def _complete_current_subtask(self) -> None:
         """Complete the current subtask."""

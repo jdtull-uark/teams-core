@@ -31,12 +31,16 @@ class SubTask:
     assigned_to: Optional[str] = None
     dependencies: List[str] = field(default_factory=list)
     required_knowledge: List[str] = field(default_factory=list)
-    required_steps: int = 0
     difficulty: int = field(default_factory=lambda: random.randint(1, 10))
+    required_steps: int = field(init=True, default=0)  # Will be set based on difficulty
     steps_completed: int = 0
     progress: float = 0.0
     start_step: int = 0
     stop_step: int = 0
+
+    def __post_init__(self):
+        if self.required_steps == 0:
+            self.required_steps = self.difficulty * 2  # Base steps on difficulty
 
     def is_complete(self) -> bool:
         return self.status == SubTaskStatus.COMPLETED
@@ -54,6 +58,7 @@ class SubTask:
             self.stop_step = step
         self.status = SubTaskStatus.COMPLETED
         self.progress = 1.0
+        print(f"Subtask {self.name} completed after {self.steps_completed} steps (required: {self.required_steps})")
 
     def pause(self):
         if self.status == SubTaskStatus.IN_PROGRESS:
@@ -91,6 +96,7 @@ class Task:
             if step:
                 self.stop_step = step
             self.status = TaskStatus.COMPLETED
+            print(f"Task {self.name} completed with {len([st for st in self.subtasks if st.is_complete()])} completed subtasks out of {len(self.subtasks)}")
         else:
             raise ValueError(f"Cannot complete task with status {self.status}")
 
