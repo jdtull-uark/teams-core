@@ -4,7 +4,7 @@ import random
 
 if TYPE_CHECKING:
     from ..engineer import EngineerAgent
-    from .knowledge_registry import KnowledgeRegistry
+    from .knowledge_network import KnowledgeNetwork
 
 class KnowledgeManager:
     """
@@ -17,8 +17,8 @@ class KnowledgeManager:
         self.concept_learning_progress: Dict[str, float] = {}  # {concept_id: progress (0-1)}
         
         # Integrated knowledge registry
-        from .knowledge_registry import KnowledgeRegistry
-        self._registry = KnowledgeRegistry()
+        from .knowledge_network import KnowledgeNetwork
+        self._knowledge_network = KnowledgeNetwork()
 
     def has_knowledge(self, concept: str) -> bool:
         """Check if the agent knows a specific concept."""
@@ -84,7 +84,7 @@ class KnowledgeManager:
         if concept not in self.learned_knowledge:
             self.learned_knowledge.add(concept)
             # Update knowledge network about the sender
-            self._registry.add_agent(sender_id, concept)
+            self._knowledge_network.add_agent(sender_id, concept)
             # Log the knowledge share
             if hasattr(self, '_log_history'):
                 self._log_history("knowledge_share_received", {
@@ -94,7 +94,7 @@ class KnowledgeManager:
             return True
         else:
             # Still update network knowledge even if we already knew it
-            self._registry.add_agent(sender_id, concept)
+            self._knowledge_network.add_agent(sender_id, concept)
             return False
 
     def get_shareable_knowledge(self, requested_concepts: List[str]) -> List[str]:
@@ -117,7 +117,7 @@ class KnowledgeManager:
             return []
 
         # Find agents with any of the missing knowledge
-        agents_with_knowledge = self._registry.find_agents_with_any_knowledge(missing_concepts)
+        agents_with_knowledge = self._knowledge_network.find_agents_with_any_knowledge(missing_concepts)
         return list(agents_with_knowledge.keys())
 
     def get_learning_progress(self, concept: str) -> float:
@@ -145,47 +145,47 @@ class KnowledgeManager:
     # Registry delegation methods
     def add_agent_knowledge(self, unique_id: str, concept: str) -> None:
         """Record that an agent has specific knowledge."""
-        self._registry.add_agent(unique_id, concept)
+        self._knowledge_network.add_agent(unique_id, concept)
 
     def remove_agent_from_network(self, unique_id: str) -> None:
         """Remove an agent from the knowledge network."""
-        self._registry.remove_agent(unique_id)
+        self._knowledge_network.remove_agent(unique_id)
 
     def knows_agent_has_knowledge(self, unique_id: str, concept: str) -> bool:
         """Check if we know an agent has specific knowledge."""
-        return self._registry.knows_agent_has_knowledge(unique_id, concept)
+        return self._knowledge_network.knows_agent_has_knowledge(unique_id, concept)
 
     def knows_any_agent_with_knowledge(self, concept: str) -> bool:
         """Check if we know any agent has a specific knowledge concept."""
-        return self._registry.knows_any_agent_with_knowledge(concept)
+        return self._knowledge_network.knows_any_agent_with_knowledge(concept)
 
     def get_agents_with_knowledge(self, concept: str) -> List[str]:
         """Get all agents known to have specific knowledge."""
-        return self._registry.get_agents_with_knowledge(concept)
+        return self._knowledge_network.get_agents_with_knowledge(concept)
 
     def add_agent_knowledge_bulk(self, unique_id: str, concepts: List[str]) -> None:
         """Record multiple knowledge concepts for an agent."""
-        self._registry.add_agent_knowledge_bulk(unique_id, concepts)
+        self._knowledge_network.add_agent_knowledge_bulk(unique_id, concepts)
 
     def get_agent_knowledge(self, unique_id: str) -> Set[str]:
         """Get all knowledge concepts we know an agent has."""
-        return self._registry.get_agent_knowledge(unique_id)
+        return self._knowledge_network.get_agent_knowledge(unique_id)
 
     def find_agents_with_any_knowledge(self, concepts: List[str]) -> Dict[str, List[str]]:
         """
         Find agents who have any of the specified knowledge concepts.
         Returns dict mapping unique_id to list of concepts they have.
         """
-        return self._registry.find_agents_with_any_knowledge(concepts)
+        return self._knowledge_network.find_agents_with_any_knowledge(concepts)
 
     def get_network_size(self) -> int:
         """Get the number of agents in the knowledge network."""
-        return self._registry.get_network_size()
+        return self._knowledge_network.get_network_size()
 
     def get_total_knowledge_entries(self) -> int:
         """Get the total number of knowledge entries across all agents."""
-        return self._registry.get_total_knowledge_entries()
+        return self._knowledge_network.get_total_knowledge_entries()
 
     def clear_network(self) -> None:
         """Clear all network data."""
-        self._registry.clear()
+        self._knowledge_network.clear()

@@ -257,10 +257,10 @@ class TaskHandler:
         
         # Try to learn each missing concept
         for concept in missing_knowledge:
-            if self.knowledge_registry.knows_any_agent_with_knowledge(concept):
+            if self.knowledge_network.knows_any_agent_with_knowledge(concept):
                 self.searching_agents = True
                 self.searching_agents_targets = (
-                    self.knowledge_registry.find_agents_with_needed_knowledge()
+                    self.knowledge_network.find_agents_with_needed_knowledge()
                 )
             
             self.learn_concept(concept)

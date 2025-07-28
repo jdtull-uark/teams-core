@@ -3,7 +3,7 @@ from typing import List, Dict, Set, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from ..engineer import EngineerAgent
 
-class KnowledgeRegistry:
+class KnowledgeNetwork:
     """
     Manages knowledge about other agents' capabilities.
     Focused solely on tracking what other agents know.

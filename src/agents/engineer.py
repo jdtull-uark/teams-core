@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from ..types import *
 from .base import BaseAgent
-from .components.communicator import Communicator, InteractionRecord
+from .components.interaction_handler import InteractionHandler, InteractionRecord
 from .components.task_handler import TaskHandler, TaskStatus, SubTaskStatus
 from .components.knowledge_manager import KnowledgeManager
 import random
@@ -11,15 +11,15 @@ import math
 if TYPE_CHECKING:
     from ..model import EngineeringTeamModel
 
-class EngineerAgent(BaseAgent, TaskHandler, Communicator, KnowledgeManager):
+class EngineerAgent(BaseAgent):
     """Represents an individual engineer."""
     
     def __init__(self, model: 'EngineeringTeamModel'):
         """Initialize an EngineerAgent."""
         BaseAgent.__init__(self, model)
-        TaskHandler.__init__(self)
-        Communicator.__init__(self)
-        KnowledgeManager.__init__(self)
+        self.task_handler = TaskHandler()
+        self.interaction_handler = InteractionHandler()
+        self.knowledge_manager = KnowledgeManager()
         
         # Psychological Safety
         self.pps: float = random.uniform(0.0, 1.0) # perceived psychological safety

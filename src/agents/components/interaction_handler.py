@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 if TYPE_CHECKING:
     from ..engineer import BaseAgent
 
-class Communicator(ABC):
+class InteractionHandler(ABC):
     """Handles all interaction logic for an engineer agent."""
     
     def __init__(self):
