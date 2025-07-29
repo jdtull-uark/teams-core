@@ -37,7 +37,6 @@ class TaskManager(Component):
                 } for st in task.subtasks]
             } for task in self.assigned_tasks]
         }
-        self.owner.log_action("agent_status", task_overview)
         
         if not self.all_tasks_completed:
             self._work_on_current_task()

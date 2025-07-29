@@ -91,6 +91,8 @@ class MovementBehavior(AgentBehavior):
     def execute(self, agent: 'BaseAgent', model: 'BaseModel') -> None:
         """Execute movement behavior."""
         communication_manager = agent.get_component("communication_manager")
+
+        previous_position = agent.position
         
         # Move toward target agents if searching
         if (communication_manager and communication_manager.searching_agents 
@@ -101,6 +103,12 @@ class MovementBehavior(AgentBehavior):
                 self._take_random_step(agent, model)
         else:
             self._take_random_step(agent, model)
+
+        # agent.log_action("moved", {
+        #     "from": previous_position,
+        #     "to": agent.position,
+        #     "step": model.step_count
+        # })
     
     def _get_closest_target_agent(self, agent, model, target_ids):
         """Get the closest target agent."""

@@ -1,22 +1,24 @@
 from matplotlib.figure import Figure
 import solara
 from mesa.visualization import SolaraViz, make_plot_component, make_space_component
-from src.model import EngineeringTeamModel
-from src.agents import EngineerAgent, ManagerAgent
+from src.engineering.model import EngineeringTeamModel
+from src.engineering.agents import EngineerAgent
 
 def agent_portrayal(agent):
     if isinstance(agent, EngineerAgent):
-        if agent.searching_agents:
+        comm_manager = agent.get_component("communication_manager")
+        if comm_manager and hasattr(comm_manager, 'searching_agents') and comm_manager.searching_agents:
             return {"color": "green"}
-        elif agent.seeking_knowledge:
+        elif comm_manager and hasattr(comm_manager, 'seeking_knowledge') and comm_manager.seeking_knowledge:
             return {"color": "orange"}
         else:
             return {"color": "blue"}
-    elif isinstance(agent, ManagerAgent):
-        return {"color": "red"}
-    return {}
+    return {"color": "gray"}
 
 def make_knowledge_linechart(model):
+    if callable(model):
+        model = model()
+
     fig = Figure(figsize=(8, 5), dpi=100)
     ax = fig.subplots()
 
@@ -41,6 +43,9 @@ def make_knowledge_linechart(model):
     return solara.FigureMatplotlib(fig)
 
 def make_psych_safety_linechart(model):
+    if callable(model):
+        model = model()
+
     fig = Figure(figsize=(8, 5), dpi=100)
     ax = fig.subplots()
 
@@ -65,6 +70,9 @@ def make_psych_safety_linechart(model):
 
 def make_task_status_chart(model):
     """Create a chart showing current task for each agent."""
+    if callable(model):
+        model = model()
+
     fig = Figure(figsize=(10, 8), dpi=100)
     ax = fig.subplots()
 
@@ -93,7 +101,10 @@ def make_task_status_chart(model):
             current_task = agent.current_task.id if hasattr(agent, "current_task") and agent.current_task else None
         
         if current_task is None:
-            task_display = 'Idle'
+            if agent.get_component("task_manager") and agent.get_component("task_manager").all_tasks_completed:
+                task_display = 'All Tasks Completed'
+            else:
+                task_display = 'Idle'
         else:
             task_display = f"Task {current_task}"
         
@@ -102,8 +113,6 @@ def make_task_status_chart(model):
         # Color code by agent type
         if isinstance(agent, EngineerAgent):
             colors.append('blue')
-        elif isinstance(agent, ManagerAgent):
-            colors.append('red')
         else:
             colors.append('gray')
     
@@ -142,6 +151,9 @@ def make_task_status_chart(model):
 
 
 def make_knowledge_linechart(model):
+    if callable(model):
+        model = model()
+
     fig = Figure(figsize=(8, 5), dpi=100)
     ax = fig.subplots()
 
@@ -168,6 +180,9 @@ def make_knowledge_linechart(model):
 
 
 def make_psych_safety_linechart(model):
+    if callable(model):
+        model = model()
+        
     fig = Figure(figsize=(8, 5), dpi=100)
     ax = fig.subplots()
 
@@ -197,40 +212,66 @@ model_params = {
     "num_engineers": {
         "type": "SliderInt",
         "value": 5,
-        "label": "Number of agents:",
+        "label": "Number of engineers:",
         "min": 2,
         "max": 15,
         "step": 1,
     },
-    "num_steps": {
+    "initial_tasks": {
         "type": "SliderInt",
-        "value": 300,
-        "label": "Number of steps:",
-        "min": 2,
-        "max": 1000,
+        "value": 10,
+        "label": "Initial tasks:",
+        "min": 1,
+        "max": 30,
         "step": 1,
     },
-    "psych_safety_threshold": {
+    "num_steps": {
+        "type": "SliderInt",
+        "value": 100,
+        "label": "Simulation steps:",
+        "min": 10,
+        "max": 1000,
+        "step": 10,
+    },
+    "psychological_safety": {
         "type": "SliderFloat",
         "value": 0.5,
+        "label": "Initial PS:",
+        "min": 0,
+        "max": 1,
+        "step": 0.1,
+    },
+    "psychological_safety_threshold": {
+        "type": "SliderFloat",
+        "value": 0.7,
         "label": "PS Threshold:",
         "min": 0,
         "max": 1,
-        "step": 0.05,
-    }
+        "step": 0.1,
+    },
+    "grid_size": {
+        "type": "SliderInt",
+        "value": 10,
+        "label": "Grid size:",
+        "min": 5,
+        "max": 20,
+        "step": 1,
+    },
 }
 
 
-def create_model(**kwargs):
-    """Factory function to create model with logging enabled."""
-    
-    model = EngineeringTeamModel(**kwargs, enable_logging=True)
-    
-    return model
+# Register all engineering components first
+from src.engineering.utils import register_engineering_components
+register_engineering_components()
+
+model = EngineeringTeamModel(
+    num_managers=0,
+    enable_logging=True,
+)
 
 page = SolaraViz(
-    create_model(),
+    model,  # Pass the factory function, not a model instance
     components=[graph, make_psych_safety_linechart, make_knowledge_linechart, make_task_status_chart],
-    model_params=model_params,
+    model_params=model_params,  # Pass the params object directly
     name="TEAMS Model",
 )

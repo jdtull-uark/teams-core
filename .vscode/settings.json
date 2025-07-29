@@ -1,0 +1,7 @@
+{
+    "python.debugging.justMyCode": false,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.include": [
+        "**"
+    ]
+}

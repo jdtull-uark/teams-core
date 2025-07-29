@@ -22,9 +22,9 @@ class BaseModel(mesa.Model):
             self.random.seed(config.random_seed)
         
         # Initialize space
-        self.space = mesa.space.MultiGrid(
+        self._space = mesa.space.MultiGrid(
             config.grid_width, 
-            config.grid_height, 
+            config.grid_height,
             config.grid_torus
         )
         
@@ -46,6 +46,19 @@ class BaseModel(mesa.Model):
         
         # Initialize components from config
         self._initialize_components()
+    
+    @property
+    def space(self):
+        """Ensure space is never None."""
+        if self._space is None:
+            print("Warning: Space was None, creating default space")
+            self._space = mesa.space.MultiGrid(10, 10, False)
+        return self._space
+    
+    @space.setter
+    def space(self, value):
+        """Set the space."""
+        self._space = value
     
     def _setup_logging(self) -> None:
         """Set up logging system."""

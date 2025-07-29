@@ -1,7 +1,3 @@
-"""
-Agent-Based Modeling Framework
-A flexible framework for creating agent-based simulations with pluggable components.
-"""
 
 from .core.model import BaseModel
 from .core.agent import BaseAgent
@@ -10,6 +6,7 @@ from .core.config import ModelConfig
 from .interfaces import AgentBehavior, InteractionHandler, TaskGenerator, Rule
 
 __version__ = "0.1.0"
+
 __all__ = [
     "BaseModel", 
     "BaseAgent", 

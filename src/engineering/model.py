@@ -13,7 +13,28 @@ from .agents import EngineerAgent, ManagerAgent
 class EngineeringTeamModel(BaseModel):
     """Engineering team simulation model."""
     
-    def __init__(self, config: ModelConfig):
+    def __init__(self, 
+                 num_engineers: int = 5,
+                 num_managers: int = 1,
+                 initial_tasks: int = 10,
+                 num_steps: int = 100,
+                 psychological_safety: float = 0.5,
+                 psychological_safety_threshold: float = 0.7,
+                 grid_size: int = 10,
+                 enable_logging: bool = True):
+        """Create a model instance directly from parameters."""
+        # Create config from parameters
+        config = create_engineering_config(
+            num_engineers=num_engineers,
+            num_managers=num_managers,
+            initial_tasks=initial_tasks,
+            num_steps=num_steps,
+            psychological_safety=psychological_safety,
+            psychological_safety_threshold=psychological_safety_threshold,
+            grid_size=grid_size,
+            enable_logging=enable_logging
+        )
+        
         # Add engineering-specific attributes before calling super
         self.tasks: Dict[str, Task] = {}
         self.knowledge_space: List[str] = []
@@ -25,19 +46,83 @@ class EngineeringTeamModel(BaseModel):
         # Create knowledge space
         self._create_knowledge_space()
         
+        # Create agents from config
+        self._create_agents()
+
         # Create initial tasks
         self._create_initial_tasks()
         
         # Assign initial tasks to engineers
         self._assign_initial_tasks()
+    
+    @classmethod
+    def from_config(cls, config: ModelConfig) -> 'EngineeringTeamModel':
+        """Create a model instance from a ModelConfig object."""
+        # Extract parameters from config
+        num_engineers = 5  # default
+        num_managers = 0   # default
+        initial_tasks = config.__dict__.get('initial_tasks', 10)
+        psychological_safety = config.__dict__.get('psychological_safety', 0.5)
+        psychological_safety_threshold = config.__dict__.get('psychological_safety_threshold', 0.7)
+        
+        # Extract from agents config
+        if 'EngineerAgent' in config.agents:
+            num_engineers = config.agents['EngineerAgent'].get('count', 5)
+        if 'ManagerAgent' in config.agents:
+            num_managers = config.agents['ManagerAgent'].get('count', 0)
+        
+        # Create instance using parameter-based constructor
+        instance = cls.__new__(cls)  # Create instance without calling __init__
+        
+        # Add engineering-specific attributes before calling super
+        instance.tasks = {}
+        instance.knowledge_space = []
+        instance.psychological_safety = psychological_safety
+        instance.psychological_safety_threshold = psychological_safety_threshold
+        
+        # Call BaseModel.__init__ directly
+        BaseModel.__init__(instance, config)
+        
+        # Create knowledge space
+        instance._create_knowledge_space()
         
         # Create agents from config
-        self._create_agents()
+        instance._create_agents()
+
+        # Create initial tasks
+        instance._create_initial_tasks()
+        
+        # Assign initial tasks to engineers
+        instance._assign_initial_tasks()
+        
+        return instance
+        
     
     def _create_knowledge_space(self, size: int = 20):
         """Create the knowledge space for the simulation."""
         self.knowledge_space = [f"K{i:02d}" for i in range(1, size + 1)]
-    
+        
+    def _distribute_initial_knowledge(self, agent: EngineerAgent):
+        """Distribute initial knowledge to an agent."""
+        # Each agent starts with 1 to 1/5 of total knowledge
+        num_knowledge = self.random.randint(1, len(self.knowledge_space) // 5)
+        initial_knowledge = set(self.random.sample(self.knowledge_space, k=num_knowledge))
+        
+        # Get the knowledge manager component and add the knowledge
+        knowledge_manager = agent.get_component("knowledge_manager")
+        if knowledge_manager:
+            knowledge_manager.learned_knowledge.update(initial_knowledge)
+            print(f"Agent {agent.unique_id} initialized with {len(initial_knowledge)} knowledge items")
+
+    def _create_agents(self):
+        """Create agents from configuration."""
+        super()._create_agents()
+
+        # Distribute initial knowledge to all engineer agents
+        # for agent in self.agents:
+        #     if isinstance(agent, EngineerAgent):
+        #         self._distribute_initial_knowledge(agent)
+
     def _create_initial_tasks(self, num_tasks: int = None):
         """Create initial set of tasks."""
         if num_tasks is None:
@@ -89,14 +174,15 @@ def create_engineering_config(
     num_steps: int = 100,
     psychological_safety: float = 0.5,
     psychological_safety_threshold: float = 0.7,
-    enable_logging: bool = True
+    enable_logging: bool = True,
+    grid_size: int = 10
 ) -> ModelConfig:
     """Create a standard engineering team configuration."""
     
     config = ModelConfig(
         num_steps=num_steps,
-        grid_width=10,
-        grid_height=10,
+        grid_width=grid_size,
+        grid_height=grid_size,
         grid_torus=False,
         enable_logging=enable_logging,
         
@@ -110,11 +196,6 @@ def create_engineering_config(
                     {"type": "CollaborationBehavior"},
                     {"type": "MovementBehavior"}
                 ]
-            },
-            "ManagerAgent": {
-                "count": num_managers,
-                "params": {},
-                "behaviors": []
             }
         },
         
@@ -173,6 +254,14 @@ def create_engineering_config(
             "Motivation": "getattr(a, 'motivation', None)"
         }
     )
+    
+    # Add ManagerAgent if needed
+    if num_managers > 0:
+        config.agents["ManagerAgent"] = {
+            "count": num_managers,
+            "params": {},
+            "behaviors": []
+        }
     
     # Add custom attributes
     config.__dict__['initial_tasks'] = initial_tasks
