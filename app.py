@@ -26,7 +26,7 @@ def make_knowledge_linechart(model):
     agent_data = model.datacollector.get_agent_vars_dataframe()
 
     for column in model_data.columns:
-        if column == "Average_knowledge":
+        if column == "Average_Knowledge":
             ax.plot(
                 model_data.index,
                 model_data[column],
@@ -63,6 +63,36 @@ def make_psych_safety_linechart(model):
     ax.set_title("Psychological Safety")
     ax.set_xlabel("Simulation Step")
     ax.set_ylabel("Psychological Safety")
+
+    fig.tight_layout()
+
+    return solara.FigureMatplotlib(fig)
+
+def make_team_efficacy_linechart(model):
+    if callable(model):
+        model = model()
+
+    fig = Figure(figsize=(8, 5), dpi=100)
+    ax = fig.subplots()
+
+    model_data = model.datacollector.get_model_vars_dataframe()
+
+    # Plot average team efficacy
+    if "Average_Team_Efficacy" in model_data.columns:
+        ax.plot(
+            model_data.index,
+            model_data["Average_Team_Efficacy"],
+            label="Average Team Efficacy",
+            color="green",
+            linewidth=2
+        )
+
+    ax.set_title("Perceived Team Efficacy")
+    ax.set_xlabel("Simulation Step")
+    ax.set_ylabel("Team Efficacy")
+    ax.set_ylim(0, 1)  # Team efficacy is bounded between 0 and 1
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
     fig.tight_layout()
 
@@ -150,54 +180,7 @@ def make_task_status_chart(model):
     return solara.FigureMatplotlib(fig)
 
 
-def make_knowledge_linechart(model):
-    if callable(model):
-        model = model()
-
-    fig = Figure(figsize=(8, 5), dpi=100)
-    ax = fig.subplots()
-
-    model_data = model.datacollector.get_model_vars_dataframe()
-    agent_data = model.datacollector.get_agent_vars_dataframe()
-
-    for column in model_data.columns:
-        if column == "Average_knowledge":
-
-            ax.plot(
-                model_data.index,
-                model_data[column],
-                label=f"TEAM",
-                color="blue"
-            )
-
-    ax.set_title("Knowledge")
-    ax.set_xlabel("Simulation Step")
-    ax.set_ylabel("Knowledge")
-
-    fig.tight_layout()
-
-    return solara.FigureMatplotlib(fig)
-
-
-def make_psych_safety_linechart(model):
-    if callable(model):
-        model = model()
-        
-    fig = Figure(figsize=(8, 5), dpi=100)
-    ax = fig.subplots()
-
-    model_data = model.datacollector.get_model_vars_dataframe()
-    agent_data = model.datacollector.get_agent_vars_dataframe()
-
-    for column in model_data.columns:
-        if column == "Average_PPS":
-            ax.plot(
-                model_data.index,
-                model_data[column],
-                label=f"TEAM",
-            )
-
-    ax.set_title("Psychological Safety")
+# Duplicate functions removed - kept the original definitions above
     ax.set_xlabel("Simulation Step")
     ax.set_ylabel("Psychological Safety")
 
@@ -271,7 +254,7 @@ model = EngineeringTeamModel(
 
 page = SolaraViz(
     model,  # Pass the factory function, not a model instance
-    components=[graph, make_psych_safety_linechart, make_knowledge_linechart, make_task_status_chart],
+    components=[graph, make_psych_safety_linechart, make_team_efficacy_linechart, make_knowledge_linechart, make_task_status_chart],
     model_params=model_params,  # Pass the params object directly
     name="TEAMS Model",
 )

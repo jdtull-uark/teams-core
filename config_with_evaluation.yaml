@@ -1,0 +1,53 @@
+# Example configuration with performance evaluation
+num_steps: 300
+grid_width: 15
+grid_height: 15
+enable_logging: true
+
+agents:
+  EngineerAgent:
+    count: 8
+    behaviors:
+      - type: WorkBehavior
+      - type: LearnBehavior
+      - type: CollaborationBehavior
+      - type: MovementBehavior
+      - type: EvaluationBehavior
+        params:
+          evaluation_frequency: 0.03  # 3% chance per step for formal evaluation
+          check_in_frequency: 0.10    # 10% chance per step for casual check-in
+
+interaction_handlers:
+  - name: knowledge_handler
+    type: KnowledgeShareHandler
+  - name: help_handler
+    type: HelpRequestHandler
+  - name: evaluation_handler
+    type: PerformanceEvaluationHandler
+
+task_generators:
+  - type: EngineeringTaskGenerator
+    params:
+      task_creation_rate: 0.03
+      max_tasks: 30
+
+rules:
+  - type: PsychologicalSafetyRule
+    params:
+      base_change_rate: 0.02
+      threshold: 0.75
+  - type: ProductivityRule
+
+model_reporters:
+  Completed_Tasks: "len([t for t in m.tasks.values() if t.status.value == 'completed'])"
+  Active_Tasks: "len([t for t in m.tasks.values() if t.status.value == 'in_progress'])"
+  Avg_Psychological_Safety: "sum(a.perceived_psychological_safety for a in m.agents if hasattr(a, 'perceived_psychological_safety')) / len([a for a in m.agents if hasattr(a, 'perceived_psychological_safety')])"
+  Avg_Team_Efficacy: "sum(a.perceived_team_efficacy for a in m.agents if hasattr(a, 'perceived_team_efficacy')) / len([a for a in m.agents if hasattr(a, 'perceived_team_efficacy')])"
+  Team_Efficacy_Std: "import statistics; statistics.stdev([a.perceived_team_efficacy for a in m.agents if hasattr(a, 'perceived_team_efficacy')]) if len([a for a in m.agents if hasattr(a, 'perceived_team_efficacy')]) > 1 else 0"
+
+agent_reporters:
+  Task_Count: "len(a.get_component('task_manager').task_queue) if a.get_component('task_manager') else 0"
+  Learned_Knowledge_Count: "len(a.learned_knowledge)"
+  Perceived_Psychological_Safety: "a.perceived_psychological_safety if hasattr(a, 'perceived_psychological_safety') else 0"
+  Perceived_Team_Efficacy: "a.perceived_team_efficacy if hasattr(a, 'perceived_team_efficacy') else 0"
+  Work_Efficiency: "a.work_efficiency if hasattr(a, 'work_efficiency') else 0"

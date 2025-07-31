@@ -166,3 +166,61 @@ class MovementBehavior(AgentBehavior):
             new_position = model.random.choice(possible_steps)
             model.space.move_agent(agent, new_position)
             agent.position = new_position
+
+
+class EvaluationBehavior(AgentBehavior):
+    """Behavior for agents to evaluate team members' performance."""
+    
+    def __init__(self, evaluation_frequency: float = 0.05, check_in_frequency: float = 0.15):
+        """
+        Initialize evaluation behavior.
+        
+        Args:
+            evaluation_frequency: Probability of formal evaluation per step (default 5%)
+            check_in_frequency: Probability of casual check-in per step (default 15%)
+        """
+        self.evaluation_frequency = evaluation_frequency
+        self.check_in_frequency = check_in_frequency
+    
+    def can_execute(self, agent: 'BaseAgent', model: 'BaseModel') -> bool:
+        """Check if agent can conduct evaluations."""
+        # Agent should have reasonable communication skills and motivation
+        return (hasattr(agent, 'communication_skill') and agent.communication_skill > 0.4 and
+                hasattr(agent, 'motivation') and agent.motivation > 0.3 and
+                hasattr(model, 'space') and agent.position is not None)
+    
+    def execute(self, agent: 'BaseAgent', model: 'BaseModel') -> None:
+        """Execute evaluation behavior."""
+        # Get nearby agents
+        if not hasattr(model, 'space'):
+            return
+            
+        neighbors = model.space.get_neighbors(
+            agent.position, moore=True, include_center=False, radius=2
+        )
+        
+        if not neighbors:
+            return
+        
+        # Decide what type of interaction to have
+        rand = random.random()
+        interaction_type = None
+        
+        if rand < self.evaluation_frequency:
+            interaction_type = "performance_evaluation"
+        elif rand < self.evaluation_frequency + self.check_in_frequency:
+            interaction_type = "check_in"
+        
+        if interaction_type:
+            # Choose a random neighbor to evaluate/check-in with
+            target_agent = random.choice(neighbors)
+            
+            # Only evaluate other engineers (not managers, if present)
+            if hasattr(target_agent, 'communication_skill'):  # Basic check for engineer
+                success = agent.interact_with(target_agent, interaction_type)
+                
+                if success:
+                    agent.log_action(f"{interaction_type}_initiated", {
+                        "target_agent": target_agent.unique_id,
+                        "step": model.step_count
+                    })

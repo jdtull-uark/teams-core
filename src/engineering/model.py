@@ -119,9 +119,9 @@ class EngineeringTeamModel(BaseModel):
         super()._create_agents()
 
         # Distribute initial knowledge to all engineer agents
-        # for agent in self.agents:
-        #     if isinstance(agent, EngineerAgent):
-        #         self._distribute_initial_knowledge(agent)
+        for agent in self.agents:
+            if isinstance(agent, EngineerAgent):
+                self._distribute_initial_knowledge(agent)
 
     def _create_initial_tasks(self, num_tasks: int = None):
         """Create initial set of tasks."""
@@ -194,7 +194,8 @@ def create_engineering_config(
                     {"type": "WorkBehavior"},
                     {"type": "LearnBehavior"},
                     {"type": "CollaborationBehavior"},
-                    {"type": "MovementBehavior"}
+                    {"type": "MovementBehavior"},
+                    {"type": "EvaluationBehavior", "params": {"evaluation_frequency": 0.02, "check_in_frequency": 0.08}}
                 ]
             }
         },
@@ -208,6 +209,11 @@ def create_engineering_config(
             {
                 "name": "help_handler", 
                 "type": "HelpRequestHandler",
+                "params": {}
+            },
+            {
+                "name": "evaluation_handler",
+                "type": "PerformanceEvaluationHandler",
                 "params": {}
             }
         ],
@@ -243,7 +249,8 @@ def create_engineering_config(
             "Total_Tasks": "len(m.tasks)",
             "Psychological_Safety": "m.psychological_safety",
             "Average_PPS": "sum([getattr(a, 'perceived_psychological_safety', 0) for a in m.agents]) / len(m.agents) if m.agents else 0",
-            "Average_Knowledge": "sum([len(getattr(a, 'learned_knowledge', set())) for a in m.agents]) / len(m.agents) if m.agents else 0"
+            "Average_Knowledge": "sum([len(getattr(a, 'learned_knowledge', set())) for a in m.agents]) / len(m.agents) if m.agents else 0",
+            "Average_Team_Efficacy": "sum([getattr(a, 'perceived_team_efficacy', 0.5) for a in m.agents]) / len(m.agents) if m.agents else 0.5"
         },
         
         agent_reporters={
@@ -251,7 +258,8 @@ def create_engineering_config(
             "Knowledge_Count": "len(getattr(a, 'learned_knowledge', set()))",
             "Current_Task": "getattr(a, 'current_task', None)",
             "Work_Efficiency": "getattr(a, 'work_efficiency', None)",
-            "Motivation": "getattr(a, 'motivation', None)"
+            "Motivation": "getattr(a, 'motivation', None)",
+            "Perceived_Team_Efficacy": "getattr(a, 'perceived_team_efficacy', 0.5)"
         }
     )
     

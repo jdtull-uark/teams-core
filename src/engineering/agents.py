@@ -23,6 +23,9 @@ class EngineerAgent(BaseAgent):
         self.work_efficiency = random.uniform(0.5, 1.5)
         self.is_available = True
         
+        # Team efficacy perception - starts neutral
+        self.perceived_team_efficacy = 0.5
+        
         # Add engineering-specific components
         self.add_component("task_manager", TaskManager())
         self.add_component("knowledge_manager", KnowledgeManager())

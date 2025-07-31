@@ -22,10 +22,12 @@ def register_engineering_components():
     registry.register_behavior("LearnBehavior", behaviors.LearnBehavior)
     registry.register_behavior("CollaborationBehavior", behaviors.CollaborationBehavior)
     registry.register_behavior("MovementBehavior", behaviors.MovementBehavior)
+    registry.register_behavior("EvaluationBehavior", behaviors.EvaluationBehavior)
     
     # Register interaction handlers
     registry.register_interaction_handler("KnowledgeShareHandler", interactions.KnowledgeShareHandler)
     registry.register_interaction_handler("HelpRequestHandler", interactions.HelpRequestHandler)
+    registry.register_interaction_handler("PerformanceEvaluationHandler", interactions.PerformanceEvaluationHandler)
     
     # Register task generators
     registry.register_task_generator("EngineeringTaskGenerator", tasks.EngineeringTaskGenerator)
