@@ -209,7 +209,7 @@ class EvaluationBehavior(AgentBehavior):
         if rand < self.evaluation_frequency:
             interaction_type = "performance_evaluation"
         elif rand < self.evaluation_frequency + self.check_in_frequency:
-            interaction_type = "check_in"
+            interaction_type = "team_feedback"
         
         if interaction_type:
             # Choose a random neighbor to evaluate/check-in with
@@ -224,3 +224,4 @@ class EvaluationBehavior(AgentBehavior):
                         "target_agent": target_agent.unique_id,
                         "step": model.step_count
                     })
+

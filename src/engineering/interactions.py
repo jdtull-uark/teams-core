@@ -162,3 +162,100 @@ class HelpRequestHandler(InteractionHandler):
                 "from": initiator.unique_id
             })
             return False
+
+
+class PerformanceEvaluationHandler(InteractionHandler):
+    """Handles performance evaluation interactions that update team efficacy."""
+    
+    def get_supported_types(self) -> List[str]:
+        return ["performance_evaluation", "team_feedback"]
+    
+    def handle_interaction(self, initiator: BaseAgent, recipient: BaseAgent, 
+                          interaction_type: str, context: dict) -> bool:
+        """Handle performance evaluation interactions."""
+        
+        if interaction_type == "performance_evaluation":
+            return self._handle_performance_evaluation(initiator, recipient, context)
+        elif interaction_type == "team_feedback":
+            return self._handle_team_feedback(initiator, recipient, context)
+        
+        return False
+    
+    def _handle_performance_evaluation(self, initiator, recipient, context):
+        """Handle performance evaluation based on task completion vs difficulty."""
+        # Get task managers for both agents
+        initiator_task_manager = initiator.get_component("task_manager")
+        recipient_task_manager = recipient.get_component("task_manager")
+        
+        if not initiator_task_manager:
+            return False
+        
+        # Calculate performance metrics
+        performance_ratio = self._calculate_performance_ratio(initiator)
+        
+        # Update team efficacy based on observed performance
+        if hasattr(initiator, 'perceived_team_efficacy'):
+            # Positive performance increases team efficacy perception
+            if performance_ratio > 0.7:
+                initiator.perceived_team_efficacy = min(1.0, 
+                    initiator.perceived_team_efficacy + 0.05)
+            elif performance_ratio < 0.3:
+                initiator.perceived_team_efficacy = max(0.0, 
+                    initiator.perceived_team_efficacy - 0.03)
+        
+        # If there's a recipient, they also update their perception
+        if recipient and hasattr(recipient, 'perceived_team_efficacy'):
+            if performance_ratio > 0.7:
+                recipient.perceived_team_efficacy = min(1.0, 
+                    recipient.perceived_team_efficacy + 0.02)
+            elif performance_ratio < 0.3:
+                recipient.perceived_team_efficacy = max(0.0, 
+                    recipient.perceived_team_efficacy - 0.02)
+        
+        return True
+    
+    def _handle_team_feedback(self, initiator, recipient, context):
+        """Handle general team feedback interactions."""
+        feedback_type = context.get("feedback_type", "neutral")
+        
+        # Update team efficacy based on feedback
+        if hasattr(initiator, 'perceived_team_efficacy'):
+            if feedback_type == "positive":
+                initiator.perceived_team_efficacy = min(1.0, 
+                    initiator.perceived_team_efficacy + 0.03)
+            elif feedback_type == "negative":
+                initiator.perceived_team_efficacy = max(0.0, 
+                    initiator.perceived_team_efficacy - 0.02)
+        
+        return True
+    
+    def _calculate_performance_ratio(self, agent):
+        """Calculate performance ratio based on task completion vs difficulty."""
+        task_manager = agent.get_component("task_manager")
+        if not task_manager:
+            return 0.5
+        
+        # Get completed tasks and their difficulty
+        completed_tasks = getattr(task_manager, 'completed_tasks', [])
+        if not completed_tasks:
+            return 0.5
+        
+        # Calculate average performance (this is a simplified metric)
+        total_performance = 0
+        task_count = 0
+        
+        for task in completed_tasks[-5:]:  # Look at last 5 tasks
+            if hasattr(task, 'difficulty') and hasattr(task, 'completion_time'):
+                # Higher difficulty with faster completion = better performance
+                expected_time = task.difficulty * 10  # Simple heuristic
+                actual_time = getattr(task, 'completion_time', expected_time)
+                
+                if actual_time > 0:
+                    performance = min(2.0, expected_time / actual_time)
+                    total_performance += performance
+                    task_count += 1
+        
+        if task_count > 0:
+            return min(1.0, total_performance / task_count / 2.0)
+        
+        return 0.5

@@ -174,7 +174,6 @@ class BaseModel(mesa.Model):
         for generator in self.task_generators:
             if generator.should_generate(self):
                 task = generator.generate_task(self)
-                # Handle new task (this would be domain-specific)
         
         # Step all agents
         for agent in self.agents:

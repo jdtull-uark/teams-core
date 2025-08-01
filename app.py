@@ -254,7 +254,7 @@ model = EngineeringTeamModel(
 
 page = SolaraViz(
     model,  # Pass the factory function, not a model instance
-    components=[graph, make_psych_safety_linechart, make_team_efficacy_linechart, make_knowledge_linechart, make_task_status_chart],
+    components=[graph, make_psych_safety_linechart, make_knowledge_linechart, make_task_status_chart],
     model_params=model_params,  # Pass the params object directly
     name="TEAMS Model",
 )
