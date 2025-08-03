@@ -168,7 +168,7 @@ class PerformanceEvaluationHandler(InteractionHandler):
     """Handles performance evaluation interactions that update team efficacy."""
     
     def get_supported_types(self) -> List[str]:
-        return ["performance_evaluation", "team_feedback"]
+        return ["performance_evaluation"]
     
     def handle_interaction(self, initiator: BaseAgent, recipient: BaseAgent, 
                           interaction_type: str, context: dict) -> bool:
@@ -176,8 +176,6 @@ class PerformanceEvaluationHandler(InteractionHandler):
         
         if interaction_type == "performance_evaluation":
             return self._handle_performance_evaluation(initiator, recipient, context)
-        elif interaction_type == "team_feedback":
-            return self._handle_team_feedback(initiator, recipient, context)
         
         return False
     
@@ -193,69 +191,104 @@ class PerformanceEvaluationHandler(InteractionHandler):
         # Calculate performance metrics
         performance_ratio = self._calculate_performance_ratio(initiator)
         
+        # Log the evaluation for debugging
+        initiator.log_action("performance_evaluation", {
+            "performance_ratio": performance_ratio,
+            "recipient_id": recipient.unique_id if recipient else None,
+            "old_team_efficacy": getattr(initiator, 'perceived_team_efficacy', 0.5)
+        })
+        
         # Update team efficacy based on observed performance
         if hasattr(initiator, 'perceived_team_efficacy'):
-            # Positive performance increases team efficacy perception
-            if performance_ratio > 0.7:
-                initiator.perceived_team_efficacy = min(1.0, 
-                    initiator.perceived_team_efficacy + 0.05)
-            elif performance_ratio < 0.3:
-                initiator.perceived_team_efficacy = max(0.0, 
-                    initiator.perceived_team_efficacy - 0.03)
+            old_efficacy = initiator.perceived_team_efficacy
+            
+            # Enhanced performance evaluation with rewards for exceptional performance
+            if performance_ratio > 1.2:  # Exceptional performance (20% faster than required)
+                boost = 0.08  # Larger boost for exceptional performance
+            elif performance_ratio > 1.0:  # Above average performance
+                boost = 0.05  # Standard boost for good performance
+            elif performance_ratio > 0.7:  # Decent performance
+                boost = 0.02  # Small boost for acceptable performance
+            elif performance_ratio < 0.3:  # Poor performance
+                boost = -0.03  # Penalty for poor performance
+            else:  # Average performance (0.3 - 0.7)
+                boost = 0.0  # No change for average performance
+            
+            initiator.perceived_team_efficacy = max(0.0, min(1.0, 
+                initiator.perceived_team_efficacy + boost))
+            
+            # Log the change
+            if old_efficacy != initiator.perceived_team_efficacy:
+                initiator.log_action("team_efficacy_updated", {
+                    "old_value": old_efficacy,
+                    "new_value": initiator.perceived_team_efficacy,
+                    "change": initiator.perceived_team_efficacy - old_efficacy,
+                    "performance_ratio": performance_ratio
+                })
         
-        # If there's a recipient, they also update their perception
+        # If there's a recipient, they also update their perception (smaller effect)
         if recipient and hasattr(recipient, 'perceived_team_efficacy'):
-            if performance_ratio > 0.7:
-                recipient.perceived_team_efficacy = min(1.0, 
-                    recipient.perceived_team_efficacy + 0.02)
-            elif performance_ratio < 0.3:
-                recipient.perceived_team_efficacy = max(0.0, 
-                    recipient.perceived_team_efficacy - 0.02)
-        
-        return True
-    
-    def _handle_team_feedback(self, initiator, recipient, context):
-        """Handle general team feedback interactions."""
-        feedback_type = context.get("feedback_type", "neutral")
-        
-        # Update team efficacy based on feedback
-        if hasattr(initiator, 'perceived_team_efficacy'):
-            if feedback_type == "positive":
-                initiator.perceived_team_efficacy = min(1.0, 
-                    initiator.perceived_team_efficacy + 0.03)
-            elif feedback_type == "negative":
-                initiator.perceived_team_efficacy = max(0.0, 
-                    initiator.perceived_team_efficacy - 0.02)
+            old_efficacy = recipient.perceived_team_efficacy
+            
+            # Observer gets smaller but similar updates
+            if performance_ratio > 1.2:  # Exceptional performance observed
+                boost = 0.04  # Half the effect for observers
+            elif performance_ratio > 1.0:  # Above average performance observed
+                boost = 0.025
+            elif performance_ratio > 0.7:  # Decent performance observed
+                boost = 0.01
+            elif performance_ratio < 0.3:  # Poor performance observed
+                boost = -0.02
+            else:  # Average performance
+                boost = 0.0
+            
+            recipient.perceived_team_efficacy = max(0.0, min(1.0, 
+                recipient.perceived_team_efficacy + boost))
+            
+            # Log the change
+            if old_efficacy != recipient.perceived_team_efficacy:
+                recipient.log_action("team_efficacy_updated_observer", {
+                    "old_value": old_efficacy,
+                    "new_value": recipient.perceived_team_efficacy,
+                    "change": recipient.perceived_team_efficacy - old_efficacy,
+                    "observed_performance": performance_ratio,
+                    "evaluator_id": initiator.unique_id
+                })
         
         return True
     
     def _calculate_performance_ratio(self, agent):
-        """Calculate performance ratio based on task completion vs difficulty."""
+        """Calculate performance ratio based on task grading system."""
         task_manager = agent.get_component("task_manager")
         if not task_manager:
             return 0.5
         
-        # Get completed tasks and their difficulty
+        # Access the current step from the agent's model
+        current_step = agent.model.step_count
+        
+        # Get completed tasks for evaluation
         completed_tasks = getattr(task_manager, 'completed_tasks', [])
-        if not completed_tasks:
-            return 0.5
+        current_task = getattr(task_manager, 'current_task', None)
         
-        # Calculate average performance (this is a simplified metric)
-        total_performance = 0
-        task_count = 0
+        # Collect grades from completed tasks and current task
+        grades = []
         
-        for task in completed_tasks[-5:]:  # Look at last 5 tasks
-            if hasattr(task, 'difficulty') and hasattr(task, 'completion_time'):
-                # Higher difficulty with faster completion = better performance
-                expected_time = task.difficulty * 10  # Simple heuristic
-                actual_time = getattr(task, 'completion_time', expected_time)
-                
-                if actual_time > 0:
-                    performance = min(2.0, expected_time / actual_time)
-                    total_performance += performance
-                    task_count += 1
+        # Grade completed tasks (use last 5 for recent performance)
+        for task in completed_tasks[-5:]:
+            grade = task.grade(current_step)
+            if grade > 0:  # Only include valid grades
+                grades.append(grade)
         
-        if task_count > 0:
-            return min(1.0, total_performance / task_count / 2.0)
+        # If we have a current task in progress, include its grade too
+        if current_task:
+            current_grade = current_task.grade(current_step)
+            if current_grade > 0:
+                grades.append(current_grade)
         
-        return 0.5
+        # Calculate average performance ratio
+        if grades:
+            avg_grade = sum(grades) / len(grades)
+            return avg_grade
+        else:
+            # No gradeable tasks - return neutral performance
+            return 0.8  # Slightly below average for agents with no completed work

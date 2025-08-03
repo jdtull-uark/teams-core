@@ -65,6 +65,46 @@ class SubTask:
             self.status = SubTaskStatus.NOT_STARTED
         else:
             raise ValueError(f"Cannot pause subtask with status {self.status}")
+        
+    def grade(self, current_step: int = None) -> float:
+        """
+        Calculate a grade based on efficiency.
+        1.0 = completed in exactly required steps
+        > 1.0 = completed faster than required (exceptional performance)
+        < 1.0 = took more steps than required (less efficient)
+        Theoretical max is around 2.0 for tasks completed in half the required time
+        """
+        if self.status == SubTaskStatus.COMPLETED:
+            # Calculate actual steps taken
+            actual_steps = self.stop_step - self.start_step
+            if actual_steps <= 0:
+                return 2.0  # Edge case: instant completion gets max reward
+            
+            # Grade based on efficiency: required_steps / actual_steps
+            # This allows grades > 1.0 for exceptional performance
+            grade = self.required_steps / actual_steps
+            return max(0.0, grade)  # Only ensure it's not negative
+            
+        elif self.status == SubTaskStatus.IN_PROGRESS:
+            if current_step is None:
+                print("Cannot grade an in-progress subtask without current step!")
+                return 0.0
+            
+            # For in-progress tasks, estimate based on current progress
+            actual_steps_so_far = current_step - self.start_step
+            if actual_steps_so_far <= 0:
+                return 1.0  # Just started, assume average performance
+            
+            # Estimate what the final grade would be if we maintain current pace
+            estimated_total_steps = actual_steps_so_far / self.progress if self.progress > 0 else actual_steps_so_far * 2
+            estimated_grade = self.required_steps / estimated_total_steps
+            return max(0.0, estimated_grade)
+        
+        else:
+            # Not started or other status
+            return 0.0
+            
+            
 
 @dataclass
 class Task:
@@ -111,6 +151,28 @@ class Task:
 
     def unassign(self):
         self.assigned_to = None
+    
+    def grade(self, current_step: int = None) -> float:
+        """
+        Calculate overall task grade based on average subtask grades.
+        Returns grade where 1.0 = average efficiency, >1.0 = exceptional performance.
+        """
+        if not self.subtasks:
+            return 0.0
+        
+        total_grade = 0.0
+        graded_subtasks = 0
+        
+        for subtask in self.subtasks:
+            subtask_grade = subtask.grade(current_step)
+            if subtask_grade > 0 or subtask.status == SubTaskStatus.COMPLETED:
+                total_grade += subtask_grade
+                graded_subtasks += 1
+        
+        if graded_subtasks == 0:
+            return 0.0
+        
+        return total_grade / graded_subtasks
 
 class EngineeringTaskGenerator(TaskGenerator):
     """Generates engineering tasks for the simulation."""

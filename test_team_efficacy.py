@@ -32,12 +32,16 @@ def test_team_efficacy_tracking():
             print(f"ERROR: Agent {agent.unique_id} missing perceived_team_efficacy attribute!")
     
     # Run a few steps
-    print("\nRunning simulation for 10 steps...")
-    for step in range(10):
+    print("\nRunning simulation for 20 steps...")
+    for step in range(20):
         model.step()
         if step % 5 == 0:
             avg_efficacy = sum(getattr(a, 'perceived_team_efficacy', 0.5) for a in model.agents) / len(model.agents)
             print(f"Step {step}: Average team efficacy = {avg_efficacy:.3f}")
+            # Print individual values too
+            for agent in model.agents:
+                pte = getattr(agent, 'perceived_team_efficacy', 0.5)
+                print(f"  Agent {agent.unique_id}: {pte:.3f}")
     
     # Check datacollector
     if hasattr(model, 'datacollector'):

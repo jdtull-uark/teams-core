@@ -45,23 +45,9 @@ class TaskManager(Component):
     
     def assign_task(self, task: Task) -> None:
         """Assign a new task."""
-        # Log initial state
-        self.owner.log_action("task_assigning", {
-            "task_id": task.id,
-            "agent_id": self.owner.unique_id,
-            "initial_status": task.status.name,
-            "subtasks": [(st.name, st.status.name) for st in task.subtasks]
-        })
-        
+        # Removed verbose logging - will be summarized at the end
         self.assigned_tasks.append(task)
         task.assign(str(self.owner.unique_id))
-        
-        # Log final state
-        self.owner.log_action("task_assigned", {
-            "task_id": task.id,
-            "final_status": task.status.name,
-            "current_tasks": [(t.id, t.status.name) for t in self.assigned_tasks]
-        })
     
     def _work_on_current_task(self) -> None:
         """Work on the current task or start a new one."""
@@ -146,7 +132,7 @@ class TaskManager(Component):
         for subtask in self.current_task.subtasks:
             if subtask.status == SubTaskStatus.NOT_STARTED:
                 try:
-                    subtask.start()
+                    subtask.start(step=self.owner.model.steps)
                     return subtask
                 except ValueError:
                     continue
@@ -216,7 +202,7 @@ class TaskManager(Component):
             return
         
         try:
-            self.current_subtask.complete()
+            self.current_subtask.complete(step=self.owner.model.steps)
             self.completed_subtasks.append(self.current_subtask.id)
             self.owner.log_action("subtask_completed", {
                 "subtask_id": self.current_subtask.id

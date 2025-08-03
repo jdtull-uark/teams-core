@@ -171,21 +171,19 @@ class MovementBehavior(AgentBehavior):
 class EvaluationBehavior(AgentBehavior):
     """Behavior for agents to evaluate team members' performance."""
     
-    def __init__(self, evaluation_frequency: float = 0.05, check_in_frequency: float = 0.15):
+    def __init__(self, evaluation_frequency: float = 0.05):
         """
         Initialize evaluation behavior.
         
         Args:
-            evaluation_frequency: Probability of formal evaluation per step (default 5%)
-            check_in_frequency: Probability of casual check-in per step (default 15%)
+            evaluation_frequency: Probability of performance evaluation per step (default 5%)
         """
         self.evaluation_frequency = evaluation_frequency
-        self.check_in_frequency = check_in_frequency
     
     def can_execute(self, agent: 'BaseAgent', model: 'BaseModel') -> bool:
         """Check if agent can conduct evaluations."""
         # Agent should have reasonable communication skills and motivation
-        return (hasattr(agent, 'communication_skill') and agent.communication_skill > 0.4 and
+        return (hasattr(agent, 'communication_skill') and agent.communication_skill > 0.2 and
                 hasattr(agent, 'motivation') and agent.motivation > 0.3 and
                 hasattr(model, 'space') and agent.position is not None)
     
@@ -202,21 +200,17 @@ class EvaluationBehavior(AgentBehavior):
         if not neighbors:
             return
         
-        # Decide what type of interaction to have
         rand = random.random()
         interaction_type = None
         
         if rand < self.evaluation_frequency:
             interaction_type = "performance_evaluation"
-        elif rand < self.evaluation_frequency + self.check_in_frequency:
-            interaction_type = "team_feedback"
         
         if interaction_type:
-            # Choose a random neighbor to evaluate/check-in with
+            # Choose a random neighbor to evaluate
             target_agent = random.choice(neighbors)
             
-            # Only evaluate other engineers (not managers, if present)
-            if hasattr(target_agent, 'communication_skill'):  # Basic check for engineer
+            if hasattr(target_agent, 'communication_skill'):
                 success = agent.interact_with(target_agent, interaction_type)
                 
                 if success:

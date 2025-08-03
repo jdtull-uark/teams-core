@@ -54,6 +54,48 @@ class EngineeringTeamModel(BaseModel):
         
         # Assign initial tasks to engineers
         self._assign_initial_tasks()
+        
+        # Store initial team efficacy for comparison
+        self._initial_efficacy = self._calculate_average_team_efficacy()
+    
+    def _calculate_average_team_efficacy(self) -> float:
+        """Calculate the current average team efficacy."""
+        if not self.agents:
+            return 0.5
+        total = sum(getattr(agent, 'perceived_team_efficacy', 0.5) for agent in self.agents)
+        return total / len(self.agents)
+
+    def step(self) -> None:
+        """Execute one model step with team efficacy logging."""
+        # Print initial team efficacy on first step
+        if self.step_count == 0:
+            initial_efficacy = self._calculate_average_team_efficacy()
+            print(f"=== SIMULATION START ===")
+            print(f"Starting Average Perceived Team Efficacy: {initial_efficacy:.3f}")
+            print(f"Individual agent team efficacy values:")
+            for agent in self.agents:
+                pte = getattr(agent, 'perceived_team_efficacy', 0.5)
+                print(f"  Agent {agent.unique_id}: {pte:.3f}")
+            print("=" * 25)
+        
+        # Call parent step method
+        super().step()
+        
+        # Print final team efficacy when simulation ends OR on the last step
+        if not self.running or self.step_count >= self.config.num_steps:
+            final_efficacy = self._calculate_average_team_efficacy()
+            print(f"=== SIMULATION END ===")
+            print(f"Final Average Perceived Team Efficacy: {final_efficacy:.3f}")
+            print(f"Individual agent team efficacy values:")
+            for agent in self.agents:
+                pte = getattr(agent, 'perceived_team_efficacy', 0.5)
+                print(f"  Agent {agent.unique_id}: {pte:.3f}")
+            
+            # Calculate change
+            if hasattr(self, '_initial_efficacy'):
+                change = final_efficacy - self._initial_efficacy
+                print(f"Change in Team Efficacy: {change:+.3f}")
+            print("=" * 23)
     
     @classmethod
     def from_config(cls, config: ModelConfig) -> 'EngineeringTeamModel':
@@ -165,11 +207,27 @@ class EngineeringTeamModel(BaseModel):
         for task in tasks[len(engineers):]:
             engineer = self.random.choice(engineers)
             engineer.assign_task(task)
+        
+        # Print a clean summary of task assignments
+        self._print_task_assignment_summary()
+    
+    def _print_task_assignment_summary(self):
+        """Print a clean summary of task assignments."""
+        print("=== INITIAL TASK ASSIGNMENTS ===")
+        engineers = [a for a in self.agents if isinstance(a, EngineerAgent)]
+        for engineer in engineers:
+            task_manager = engineer.get_component("task_manager")
+            if task_manager and task_manager.assigned_tasks:
+                task_names = [f"'{t.name}' (diff: {t.difficulty})" for t in task_manager.assigned_tasks]
+                print(f"Agent {engineer.unique_id}: {len(task_manager.assigned_tasks)} tasks - {', '.join(task_names)}")
+            else:
+                print(f"Agent {engineer.unique_id}: No tasks assigned")
+        print("=" * 33)
 
 # Configuration templates and utilities
 def create_engineering_config(
     num_engineers: int = 5,
-    num_managers: int = 1,
+    num_managers: int = 0,
     initial_tasks: int = 10,
     num_steps: int = 100,
     psychological_safety: float = 0.5,
@@ -195,7 +253,7 @@ def create_engineering_config(
                     {"type": "LearnBehavior"},
                     {"type": "CollaborationBehavior"},
                     {"type": "MovementBehavior"},
-                    {"type": "EvaluationBehavior", "params": {"evaluation_frequency": 0.02, "check_in_frequency": 0.08}}
+                    {"type": "EvaluationBehavior"}
                 ]
             }
         },
@@ -250,7 +308,8 @@ def create_engineering_config(
             "Psychological_Safety": "m.psychological_safety",
             "Average_PPS": "sum([getattr(a, 'perceived_psychological_safety', 0) for a in m.agents]) / len(m.agents) if m.agents else 0",
             "Average_Knowledge": "sum([len(getattr(a, 'learned_knowledge', set())) for a in m.agents]) / len(m.agents) if m.agents else 0",
-            "Average_Team_Efficacy": "sum([getattr(a, 'perceived_team_efficacy', 0.5) for a in m.agents]) / len(m.agents) if m.agents else 0.5"
+            "Average_Team_Efficacy": "sum([getattr(a, 'perceived_team_efficacy', 0.5) for a in m.agents]) / len(m.agents) if m.agents else 0.5",
+            "Team_Efficacy_Std": "(__import__('statistics').stdev([getattr(a, 'perceived_team_efficacy', 0.5) for a in m.agents]) if len(m.agents) > 1 else 0.0)"
         },
         
         agent_reporters={
