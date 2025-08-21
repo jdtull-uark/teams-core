@@ -6,27 +6,31 @@ import mesa
 from typing import Dict, List, Any, Optional, Type
 from .registry import registry
 from .config import ModelConfig
-from ..interfaces import InteractionHandler, TaskGenerator, Rule
+from ..core.interfaces import InteractionHandler, TaskGenerator, Rule
 
 class BaseModel(mesa.Model):
     """
     Base model class with support for pluggable components and configuration.
     """
     
-    def __init__(self, config: ModelConfig):
+    def __init__(self, config: ModelConfig, print_progress_bar: bool = True):
+
         super().__init__()
+
         self.config = config
-        
-        # Set random seed if provided
-        if config.random_seed is not None:
-            self.random.seed(config.random_seed)
-        
+        self.print_progress_bar = print_progress_bar
+
+        # Store verbose setting for easy access
+        self.verbose = getattr(self.config, 'verbose', True)
+
+        self.verbose_print("Initializing Mesa MultiGrid...", end=' ')
         # Initialize space
         self._space = mesa.space.MultiGrid(
-            config.grid_width, 
-            config.grid_height,
-            config.grid_torus
+            self.config.grid_width, 
+            self.config.grid_height,
+            self.config.grid_torus
         )
+        self.verbose_print("Done.")
         
         # Component systems
         self.interaction_handlers: Dict[str, InteractionHandler] = {}
@@ -38,14 +42,20 @@ class BaseModel(mesa.Model):
         self.step_count = 0
         
         # Initialize logging if enabled
-        if config.enable_logging:
+        if self.config.enable_logging:
             self._setup_logging()
         
         # Initialize data collection
+        # self.verbose_print("Setting up data collectors...", end=' ')
         self._setup_data_collection()
+        # self.verbose_print("Done.")
         
-        # Initialize components from config
+        # # Initialize components from config
+        # self.verbose_print("Initializing components...", end=' ')
         self._initialize_components()
+        # self.verbose_print("Done.")
+
+        # self._printProgressBar(self.step_count, self.config.num_steps, prefix="\n")
     
     @property
     def space(self):
@@ -64,9 +74,12 @@ class BaseModel(mesa.Model):
         """Set up logging system."""
         # Import and configure logging
         from ..utils import logging
+        
+        # Use the verbose setting from the model instance
         logging.setup_logging(
-            log_file=self.config.log_file,
-            log_level=self.config.log_level
+            log_file=getattr(self.config, 'log_file', None),
+            log_level=getattr(self.config, 'log_level', 'INFO'),
+            console_output=self.verbose
         )
         self._logger = logging.get_logger()
     
@@ -146,11 +159,25 @@ class BaseModel(mesa.Model):
     
     def handle_interaction(self, initiator, recipient, interaction_type: str, 
                           context: Dict[str, Any]) -> bool:
-        """Handle an interaction between two agents."""
+        """Handle an interaction between two agents, allowing rules to pre-process the interaction and enforcing spatial proximity."""
+        # Proximity check: require agents to be in the same or adjacent cell
+        pos1 = getattr(initiator, 'position', None)
+        pos2 = getattr(recipient, 'position', None)
+        if pos1 is not None and pos2 is not None:
+            dx = abs(pos1[0] - pos2[0])
+            dy = abs(pos1[1] - pos2[1])
+            if max(dx, dy) > 1:
+                # Not in same or adjacent cell
+                return False
+        # Allow all rules to pre-process the interaction (can block or modify context)
+        allow = True
+        ctx = context
+        for rule in getattr(self, 'rules', []):
+            if hasattr(rule, 'preprocess_interaction'):
+                has_preprocess, ctx = rule.preprocess_interaction(initiator, recipient, interaction_type, ctx)
         if interaction_type in self.interaction_handlers:
             handler = self.interaction_handlers[interaction_type]
-            return handler.handle_interaction(initiator, recipient, interaction_type, context)
-        
+            return handler.handle_interaction(initiator, recipient, interaction_type, ctx)
         # Log unhandled interaction
         from ..utils import logging
         logging.log_model_event(self.step_count, "unhandled_interaction", {
@@ -158,7 +185,6 @@ class BaseModel(mesa.Model):
             "initiator": initiator.unique_id,
             "recipient": recipient.unique_id
         })
-        
         return False
     
     def step(self) -> None:
@@ -183,6 +209,8 @@ class BaseModel(mesa.Model):
         if hasattr(self, 'datacollector'):
             self.datacollector.collect(self)
         
+        self._printProgressBar(self.step_count, self.config.num_steps)
+
         # Check termination conditions
         if self.step_count >= self.config.num_steps:
             self.running = False
@@ -213,3 +241,31 @@ class BaseModel(mesa.Model):
         """Log an agent action."""
         from ..utils import logging
         logging.log_agent_action(agent_id, self.step_count, action, details)
+    
+    def verbose_print(self, *args, **kwargs) -> None:
+        """Print only if verbose mode is enabled."""
+        if self.verbose:
+            print(*args, **kwargs)
+
+    # Print iterations progress
+    def _printProgressBar (self, iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+        """
+        Call in a loop to create terminal progress bar
+        @params:
+            iteration   - Required  : current iteration (Int)
+            total       - Required  : total iterations (Int)
+            prefix      - Optional  : prefix string (Str)
+            suffix      - Optional  : suffix string (Str)
+            decimals    - Optional  : positive number of decimals in percent complete (Int)
+            length      - Optional  : character length of bar (Int)
+            fill        - Optional  : bar fill character (Str)
+            printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+        """
+        if self.print_progress_bar:
+            percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+            filledLength = int(length * iteration // total)
+            bar = fill * filledLength + '-' * (length - filledLength)
+            print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+            # Print New Line on Complete
+            if iteration == total: 
+                print()

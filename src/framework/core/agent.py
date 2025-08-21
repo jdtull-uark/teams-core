@@ -5,7 +5,7 @@ Base agent class with pluggable behavior system.
 import mesa
 import random
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
-from ..interfaces import AgentBehavior, Component
+from ..core.interfaces import AgentBehavior, Component
 
 if TYPE_CHECKING:
     from .model import BaseModel
@@ -138,6 +138,16 @@ class BaseAgent(mesa.Agent):
                         if entry["step"] >= before_step]
         else:
             self.history.clear()
+    
+    def soft_reset_components(self) -> None:
+        """Perform a soft reset on all components."""
+        for component in self.components.values():
+            component.soft_reset()
+    
+    def close_components(self) -> None:
+        """Close/finalize all components."""
+        for component in self.components.values():
+            component.close()
 
     def reset_state(self) -> None:
         """Reset agent to initial state."""

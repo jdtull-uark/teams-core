@@ -36,6 +36,7 @@ class ModelConfig:
     enable_logging: bool = True
     log_level: str = "INFO"
     log_file: Optional[str] = None
+    verbose: bool = True  # Controls console output including print statements and logging to console
     
     @classmethod
     def from_file(cls, config_path: str) -> 'ModelConfig':

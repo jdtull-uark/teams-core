@@ -11,7 +11,6 @@ if __name__ == "__main__":
     num_managers = 1
     initial_tasks = 15
     initial_psych_safety = 0.5
-    psych_safety_threshold = 0.7
     num_steps = 300 # Number of simulation steps
 
     # Instantiate the model
@@ -20,7 +19,6 @@ if __name__ == "__main__":
         num_managers=num_managers,
         initial_tasks=initial_tasks,
         initial_psych_safety=initial_psych_safety,
-        psych_safety_threshold=psych_safety_threshold
     )
 
     print(f"Model initialized with {num_engineers} engineers, {num_managers} managers.")

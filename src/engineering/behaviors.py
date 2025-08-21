@@ -5,7 +5,7 @@ Engineering-specific behaviors that can be attached to agents.
 import random
 import math
 from typing import TYPE_CHECKING
-from ..framework.interfaces import AgentBehavior
+from ..framework.core.interfaces import AgentBehavior
 
 if TYPE_CHECKING:
     from ..framework.core.agent import BaseAgent
@@ -33,13 +33,23 @@ class LearnBehavior(AgentBehavior):
         """Check if agent needs to learn something."""
         task_manager = agent.get_component("task_manager")
         knowledge_manager = agent.get_component("knowledge_manager")
+        communication_manager = agent.get_component("communication_manager")
         
         if not task_manager or not knowledge_manager or not task_manager.current_subtask:
+            # Soft reset communication state if no current subtask
+            if communication_manager:
+                communication_manager.soft_reset()
             return False
         
-        return not knowledge_manager.has_all_required_knowledge(
+        has_all_knowledge = knowledge_manager.has_all_required_knowledge(
             task_manager.current_subtask.required_knowledge
         )
+        
+        # Soft reset communication state if agent has all required knowledge
+        if has_all_knowledge and communication_manager:
+            communication_manager.soft_reset()
+        
+        return not has_all_knowledge
     
     def execute(self, agent: 'BaseAgent', model: 'BaseModel') -> None:
         """Execute learning behavior."""

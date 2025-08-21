@@ -5,7 +5,7 @@ Component registry system for managing pluggable components.
 from typing import Dict, Type, Any, List, Optional
 import importlib
 import inspect
-from ..interfaces import AgentBehavior, InteractionHandler, TaskGenerator, Rule
+from ..core.interfaces import AgentBehavior, InteractionHandler, TaskGenerator, Rule
 
 class ComponentRegistry:
     """Registry for managing all pluggable components."""

@@ -15,13 +15,16 @@ class EngineeringTeamModel(BaseModel):
     
     def __init__(self, 
                  num_engineers: int = 5,
-                 num_managers: int = 1,
+                 num_managers: int = 0,
                  initial_tasks: int = 10,
                  num_steps: int = 100,
                  psychological_safety: float = 0.5,
-                 psychological_safety_threshold: float = 0.7,
+                 contributed_psychological_safety: float = 0,
                  grid_size: int = 10,
-                 enable_logging: bool = True):
+                 enable_logging: bool = True,
+                 verbose: bool = False,
+                 print_progress_bar: bool = True,
+                 random_seed: int = None):
         """Create a model instance directly from parameters."""
         # Create config from parameters
         config = create_engineering_config(
@@ -30,18 +33,20 @@ class EngineeringTeamModel(BaseModel):
             initial_tasks=initial_tasks,
             num_steps=num_steps,
             psychological_safety=psychological_safety,
-            psychological_safety_threshold=psychological_safety_threshold,
+            contributed_psychological_safety=contributed_psychological_safety,
             grid_size=grid_size,
-            enable_logging=enable_logging
+            enable_logging=enable_logging,
+            verbose=verbose,
+            random_seed=random_seed
         )
         
         # Add engineering-specific attributes before calling super
         self.tasks: Dict[str, Task] = {}
         self.knowledge_space: List[str] = []
         self.psychological_safety = config.__dict__.get('psychological_safety', 0.5)
-        self.psychological_safety_threshold = config.__dict__.get('psychological_safety_threshold', 0.7)
+        self.contributed_psychological_safety = config.__dict__.get('contributed_psychological_safety', 0)
         
-        super().__init__(config)
+        super().__init__(config, print_progress_bar=print_progress_bar)
         
         # Create knowledge space
         self._create_knowledge_space()
@@ -70,32 +75,23 @@ class EngineeringTeamModel(BaseModel):
         # Print initial team efficacy on first step
         if self.step_count == 0:
             initial_efficacy = self._calculate_average_team_efficacy()
-            print(f"=== SIMULATION START ===")
-            print(f"Starting Average Perceived Team Efficacy: {initial_efficacy:.3f}")
-            print(f"Individual agent team efficacy values:")
-            for agent in self.agents:
-                pte = getattr(agent, 'perceived_team_efficacy', 0.5)
-                print(f"  Agent {agent.unique_id}: {pte:.3f}")
-            print("=" * 25)
+            self.verbose_print(f"=== SIMULATION START ===")
+            self.verbose_print(f"Starting Average Perceived Team Efficacy: {initial_efficacy:.3f}")
+            self.verbose_print(f"Starting Perceived Psych Safety: {self.psychological_safety}")
+            self.verbose_print("=" * 25)
         
         # Call parent step method
         super().step()
         
         # Print final team efficacy when simulation ends OR on the last step
-        if not self.running or self.step_count >= self.config.num_steps:
+        if (not self.running or self.step_count >= self.config.num_steps):
             final_efficacy = self._calculate_average_team_efficacy()
-            print(f"=== SIMULATION END ===")
-            print(f"Final Average Perceived Team Efficacy: {final_efficacy:.3f}")
-            print(f"Individual agent team efficacy values:")
-            for agent in self.agents:
-                pte = getattr(agent, 'perceived_team_efficacy', 0.5)
-                print(f"  Agent {agent.unique_id}: {pte:.3f}")
-            
-            # Calculate change
+            self.verbose_print(f"=== SIMULATION END ===")
+            self.verbose_print(f"Final Average Perceived Team Efficacy: {final_efficacy:.3f}")
             if hasattr(self, '_initial_efficacy'):
                 change = final_efficacy - self._initial_efficacy
-                print(f"Change in Team Efficacy: {change:+.3f}")
-            print("=" * 23)
+                self.verbose_print(f"Change in Team Efficacy: {change:+.3f}")
+            self.verbose_print("=" * 23)
     
     @classmethod
     def from_config(cls, config: ModelConfig) -> 'EngineeringTeamModel':
@@ -105,7 +101,6 @@ class EngineeringTeamModel(BaseModel):
         num_managers = 0   # default
         initial_tasks = config.__dict__.get('initial_tasks', 10)
         psychological_safety = config.__dict__.get('psychological_safety', 0.5)
-        psychological_safety_threshold = config.__dict__.get('psychological_safety_threshold', 0.7)
         
         # Extract from agents config
         if 'EngineerAgent' in config.agents:
@@ -120,9 +115,8 @@ class EngineeringTeamModel(BaseModel):
         instance.tasks = {}
         instance.knowledge_space = []
         instance.psychological_safety = psychological_safety
-        instance.psychological_safety_threshold = psychological_safety_threshold
         
-        # Call BaseModel.__init__ directly
+        # Call BaseModel.__init__ directly (this will set instance.verbose from config)
         BaseModel.__init__(instance, config)
         
         # Create knowledge space
@@ -140,7 +134,7 @@ class EngineeringTeamModel(BaseModel):
         return instance
         
     
-    def _create_knowledge_space(self, size: int = 20):
+    def _create_knowledge_space(self, size: int = 100):
         """Create the knowledge space for the simulation."""
         self.knowledge_space = [f"K{i:02d}" for i in range(1, size + 1)]
         
@@ -154,11 +148,24 @@ class EngineeringTeamModel(BaseModel):
         knowledge_manager = agent.get_component("knowledge_manager")
         if knowledge_manager:
             knowledge_manager.learned_knowledge.update(initial_knowledge)
-            print(f"Agent {agent.unique_id} initialized with {len(initial_knowledge)} knowledge items")
+            self.verbose_print(f"Agent {agent.unique_id} initialized with {len(initial_knowledge)} knowledge items")
 
     def _create_agents(self):
         """Create agents from configuration."""
         super()._create_agents()
+
+        # Set initial perceived psychological safety for all agents
+        min_psych_safety = max(0, self.psychological_safety - 0.25)
+        max_psych_safety = min(1, self.psychological_safety + 0.25)
+        for agent in self.agents:
+            setattr(agent, 'perceived_psychological_safety', self.random.uniform(min_psych_safety, max_psych_safety))
+
+        # Set initial contributed psychological safety for all agents
+        min_contributed_psych_safety = max(-1, self.contributed_psychological_safety - 0.5)
+        max_contributed_psych_safety = min(1, self.contributed_psychological_safety + 0.5)
+        for agent in self.agents:
+            setattr(agent, 'contributed_psychological_safety', self.random.uniform(min_contributed_psych_safety, max_contributed_psych_safety))
+
 
         # Distribute initial knowledge to all engineer agents
         for agent in self.agents:
@@ -171,20 +178,20 @@ class EngineeringTeamModel(BaseModel):
             num_tasks = self.config.__dict__.get('initial_tasks', 10)
         
         for i in range(num_tasks):
-            difficulty = random.randint(1, 10)
+            difficulty = self.random.randint(1, 10)
             task = Task(name=f"Task {i+1}", difficulty=difficulty)
             
             # Create subtasks
             for j in range(difficulty):
-                required_knowledge = random.sample(
+                required_knowledge = self.random.sample(
                     self.knowledge_space,
-                    k=min(random.randint(1, 3), len(self.knowledge_space))
+                    k=min(self.random.randint(1, 3), len(self.knowledge_space))
                 )
                 
                 subtask = SubTask(
                     name=f"{task.name} - Subtask {j+1}",
                     required_knowledge=required_knowledge,
-                    required_steps=random.randint(1, 5)
+                    required_steps=self.random.randint(1, 5)
                 )
                 task.subtasks.append(subtask)
             
@@ -213,16 +220,19 @@ class EngineeringTeamModel(BaseModel):
     
     def _print_task_assignment_summary(self):
         """Print a clean summary of task assignments."""
-        print("=== INITIAL TASK ASSIGNMENTS ===")
+        if not self.verbose:
+            return
+            
+        self.verbose_print("=== INITIAL TASK ASSIGNMENTS ===")
         engineers = [a for a in self.agents if isinstance(a, EngineerAgent)]
         for engineer in engineers:
             task_manager = engineer.get_component("task_manager")
             if task_manager and task_manager.assigned_tasks:
                 task_names = [f"'{t.name}' (diff: {t.difficulty})" for t in task_manager.assigned_tasks]
-                print(f"Agent {engineer.unique_id}: {len(task_manager.assigned_tasks)} tasks - {', '.join(task_names)}")
+                self.verbose_print(f"Agent {engineer.unique_id}: {len(task_manager.assigned_tasks)} tasks - {', '.join(task_names)}")
             else:
-                print(f"Agent {engineer.unique_id}: No tasks assigned")
-        print("=" * 33)
+                self.verbose_print(f"Agent {engineer.unique_id}: No tasks assigned")
+        self.verbose_print("=" * 33)
 
 # Configuration templates and utilities
 def create_engineering_config(
@@ -231,9 +241,11 @@ def create_engineering_config(
     initial_tasks: int = 10,
     num_steps: int = 100,
     psychological_safety: float = 0.5,
-    psychological_safety_threshold: float = 0.7,
+    contributed_psychological_safety: float = 0,
     enable_logging: bool = True,
-    grid_size: int = 10
+    verbose: bool = True,
+    grid_size: int = 10,
+    random_seed: int = None
 ) -> ModelConfig:
     """Create a standard engineering team configuration."""
     
@@ -243,6 +255,7 @@ def create_engineering_config(
         grid_height=grid_size,
         grid_torus=False,
         enable_logging=enable_logging,
+        random_seed=random_seed,
         
         agents={
             "EngineerAgent": {
@@ -290,8 +303,7 @@ def create_engineering_config(
             {
                 "type": "PsychologicalSafetyRule",
                 "params": {
-                    "base_change_rate": 0.01,
-                    "threshold": psychological_safety_threshold
+                    "base_change_rate": 0.05,
                 }
             },
             {
@@ -333,6 +345,7 @@ def create_engineering_config(
     # Add custom attributes
     config.__dict__['initial_tasks'] = initial_tasks
     config.__dict__['psychological_safety'] = psychological_safety
-    config.__dict__['psychological_safety_threshold'] = psychological_safety_threshold
+    config.__dict__['contributed_psychological_safety'] = contributed_psychological_safety
+    config.__dict__['verbose'] = verbose
     
     return config

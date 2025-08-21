@@ -4,7 +4,7 @@ Engineering-specific components for agents.
 
 import random
 from typing import Set, List, Dict, Any, Optional
-from ..framework.interfaces import Component
+from ..framework.core.interfaces import Component
 from .tasks import Task, SubTask, TaskStatus, SubTaskStatus
 
 class TaskManager(Component):
@@ -21,6 +21,17 @@ class TaskManager(Component):
     
     def initialize(self, owner) -> None:
         self.owner = owner
+    
+    def soft_reset(self) -> None:
+        """Reset transient task state while preserving assigned and completed tasks."""
+        self.current_task = None
+        self.current_subtask = None
+    
+    def close(self) -> None:
+        """Finalize task management when all tasks are completed."""
+        # Only reset current working state if all tasks are completed
+        self.all_tasks_completed = True
+        self.soft_reset()
     
     def step(self) -> None:
         """Execute task management logic."""
@@ -41,6 +52,12 @@ class TaskManager(Component):
         if not self.all_tasks_completed:
             self._work_on_current_task()
         else:
+            # Close task manager and soft reset other components when all tasks completed
+            self.close()
+            # Reset communication state to stop any lingering search behavior
+            communication_manager = self.owner.get_component("communication_manager")
+            if communication_manager:
+                communication_manager.soft_reset()
             self.owner.log_action("status", {"message": "All tasks completed"})
     
     def assign_task(self, task: Task) -> None:
@@ -203,7 +220,7 @@ class TaskManager(Component):
         
         try:
             self.current_subtask.complete(step=self.owner.model.steps)
-            self.completed_subtasks.append(self.current_subtask.id)
+            self.completed_subtasks.append(self.current_subtask)
             self.owner.log_action("subtask_completed", {
                 "subtask_id": self.current_subtask.id
             })
@@ -225,7 +242,7 @@ class TaskManager(Component):
                for subtask in self.current_task.subtasks):
             try:
                 self.current_task.complete()
-                self.completed_tasks.append(self.current_task.id)
+                self.completed_tasks.append(self.current_task)
                 self.owner.log_action("task_completed", {"task_id": self.current_task.id})
                 self.current_task = None
                 
@@ -252,6 +269,10 @@ class KnowledgeManager(Component):
     
     def initialize(self, owner) -> None:
         self.owner = owner
+    
+    def soft_reset(self) -> None:
+        """Reset transient learning state while preserving learned knowledge."""
+        self.concept_learning_progress.clear()
     
     def step(self) -> None:
         """Execute knowledge management logic."""
@@ -307,6 +328,26 @@ class KnowledgeManager(Component):
         else:
             self._update_knowledge_network(sender_id, concept)
             return False
+        
+    def receive_partial_shared_knowledge(self, sender_id: str, concept: str, modifier: float) -> bool:
+        """Receive some knowledge shared from another agent."""
+        if concept not in self.learned_knowledge:
+            self._update_knowledge_network(sender_id, concept)
+
+            if concept not in self.concept_learning_progress:
+                self.concept_learning_progress[concept] = modifier
+            else:
+                self.concept_learning_progress[concept] += modifier
+
+            self.owner.log_action("partial_knowledge_share_received", {
+                "sender_id": sender_id,
+                "shared_concept": concept,
+                "modifier": modifier
+            })
+            return True
+        else:
+            self._update_knowledge_network(sender_id, concept)
+            return False
     
     def _update_knowledge_network(self, agent_id: str, concept: str) -> None:
         """Update knowledge about what other agents know."""
@@ -355,6 +396,12 @@ class CommunicationManager(Component):
     
     def initialize(self, owner) -> None:
         self.owner = owner
+    
+    def soft_reset(self) -> None:
+        """Reset transient communication state while preserving interaction history."""
+        self.seeking_knowledge = False
+        self.searching_agents = False
+        self.searching_agents_targets = []
     
     def step(self) -> None:
         """Execute communication logic."""

@@ -5,7 +5,7 @@ Engineering-specific agent implementations.
 import random
 from typing import Set, List, Dict, Any, Optional
 from ..framework.core.agent import BaseAgent
-from ..framework.interfaces import Component
+from ..framework.core.interfaces import Component
 from .components import TaskManager, KnowledgeManager, CommunicationManager
 
 class EngineerAgent(BaseAgent):
@@ -17,13 +17,11 @@ class EngineerAgent(BaseAgent):
         # Engineer-specific attributes
         self.perceived_psychological_safety = random.uniform(0.0, 1.0)
         self.contributed_psychological_safety = random.uniform(-1.0, 1.0)
-        self.learning_rate = random.uniform(0.01, 0.1)
+        self.learning_rate = random.uniform(0.01, 0.05)
         self.communication_skill = random.uniform(0.1, 1.0)
         self.motivation = random.uniform(0.1, 1.0)
         self.work_efficiency = random.uniform(0.5, 1.5)
         self.is_available = True
-        
-        # Team efficacy perception - starts neutral
         self.perceived_team_efficacy = 0.5
         
         # Add engineering-specific components

@@ -4,7 +4,7 @@ Engineering-specific interaction handlers.
 
 import random
 from typing import List
-from ..framework.interfaces import InteractionHandler
+from ..framework.core.interfaces import InteractionHandler
 from ..framework.core.agent import BaseAgent
 
 class KnowledgeShareHandler(InteractionHandler):
@@ -47,13 +47,23 @@ class KnowledgeShareHandler(InteractionHandler):
             shareable = recipient_knowledge.get_shareable_knowledge(requested_knowledge)
             if shareable:
                 shared_concept = random.choice(shareable)
-                initiator_knowledge.receive_shared_knowledge(
-                    str(recipient.unique_id), shared_concept
-                )
-                recipient.log_action("knowledge_shared", {
-                    "recipient": initiator.unique_id,
-                    "concept": shared_concept
-                })
+                if 'knowledge_share_modifier' in context:
+                    initiator_knowledge.receive_partial_shared_knowledge(
+                        str(recipient.unique_id), shared_concept, context['knowledge_share_modifier']
+                    )
+                    recipient.log_action("partial_knowledge_shared", {
+                        "recipient": initiator.unique_id,
+                        "concept": shared_concept,
+                        "modifier": context['knowledge_share_modifier']
+                    })
+                else:
+                    initiator_knowledge.receive_shared_knowledge(
+                        str(recipient.unique_id), shared_concept
+                    )
+                    recipient.log_action("knowledge_shared", {
+                        "recipient": initiator.unique_id,
+                        "concept": shared_concept
+                    })
                 return True
         
         return False
@@ -204,18 +214,20 @@ class PerformanceEvaluationHandler(InteractionHandler):
             
             # Enhanced performance evaluation with rewards for exceptional performance
             if performance_ratio > 1.2:  # Exceptional performance (20% faster than required)
-                boost = 0.08  # Larger boost for exceptional performance
+                boost = 0.3  # Larger boost for exceptional performance
             elif performance_ratio > 1.0:  # Above average performance
-                boost = 0.05  # Standard boost for good performance
-            elif performance_ratio > 0.7:  # Decent performance
-                boost = 0.02  # Small boost for acceptable performance
-            elif performance_ratio < 0.3:  # Poor performance
-                boost = -0.03  # Penalty for poor performance
-            else:  # Average performance (0.3 - 0.7)
+                boost = 0.2  # Standard boost for good performance
+            elif performance_ratio > 0.55:  # Decent performance
+                boost = 0.1  # Small boost for acceptable performance
+            elif performance_ratio < 0.45:  # Poor performance
+                boost = -0.1  # Penalty for poor performance
+            elif performance_ratio < 0.25:
+                boost = -.2
+            else:
                 boost = 0.0  # No change for average performance
             
-            initiator.perceived_team_efficacy = max(0.0, min(1.0, 
-                initiator.perceived_team_efficacy + boost))
+            pps_modifier = initiator.perceived_psychological_safety * 2 - 1
+            initiator.perceived_team_efficacy = max(0.0, min(1.0, initiator.perceived_team_efficacy + boost + pps_modifier))
             
             # Log the change
             if old_efficacy != initiator.perceived_team_efficacy:
@@ -242,8 +254,8 @@ class PerformanceEvaluationHandler(InteractionHandler):
             else:  # Average performance
                 boost = 0.0
             
-            recipient.perceived_team_efficacy = max(0.0, min(1.0, 
-                recipient.perceived_team_efficacy + boost))
+            pps_modifier = recipient.perceived_psychological_safety * 2 - 1
+            recipient.perceived_team_efficacy = max(0.0, min(1.0, recipient.perceived_team_efficacy + boost + pps_modifier))
             
             # Log the change
             if old_efficacy != recipient.perceived_team_efficacy:

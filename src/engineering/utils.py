@@ -15,7 +15,7 @@ def register_engineering_components():
     
     # Register agent types
     registry.register_agent_type("EngineerAgent", agents.EngineerAgent)
-    # registry.register_agent_type("ManagerAgent", agents.ManagerAgent)
+    registry.register_agent_type("ManagerAgent", agents.ManagerAgent)
     
     # Register behaviors
     registry.register_behavior("WorkBehavior", behaviors.WorkBehavior)
@@ -82,7 +82,6 @@ rules:
   - type: PsychologicalSafetyRule
     params:
       base_change_rate: 0.02
-      threshold: 0.75
   - type: ProductivityRule
 
 model_reporters:
@@ -124,7 +123,6 @@ def main():
     # Add engineering-specific config
     config.__dict__['initial_tasks'] = 15
     config.__dict__['psychological_safety'] = 0.6
-    config.__dict__['psychological_safety_threshold'] = 0.75
     
     # Create and run model
     model = EngineeringTeamModel(config)
@@ -262,7 +260,6 @@ def create_cli():
         # Add engineering-specific defaults
         config_obj.__dict__.setdefault('initial_tasks', 10)
         config_obj.__dict__.setdefault('psychological_safety', 0.5)
-        config_obj.__dict__.setdefault('psychological_safety_threshold', 0.7)
         
         model = EngineeringTeamModel(config_obj)
         model.run_model()

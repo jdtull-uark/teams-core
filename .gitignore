@@ -1,6 +1,10 @@
 .venv/
 random_test.ipynb
 logs/
+results/
+*.png
+*.csv
+simulations/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

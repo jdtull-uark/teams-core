@@ -23,7 +23,7 @@ def _generate_log_filename() -> str:
     
     return f"logs/simulation_{date_str}_{time_str}_{random_id}.log"
 
-def setup_logging(log_file: str = None, log_level: str = "INFO"):
+def setup_logging(log_file: str = None, log_level: str = "INFO", console_output: bool = True):
     """Initialize the logging system."""
     global _logger, _log_file, _configured
     
@@ -38,19 +38,31 @@ def setup_logging(log_file: str = None, log_level: str = "INFO"):
     # Convert string log level to logging constant
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
     
+    # Clear any existing handlers from root logger to prevent conflicts
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Create handlers
+    handlers = [logging.FileHandler(_log_file, mode='w', encoding='utf-8')]
+    if console_output:
+        handlers.append(logging.StreamHandler())
+    
     # Configure logging
     logging.basicConfig(
         level=numeric_level,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(_log_file, mode='w', encoding='utf-8'),
-            logging.StreamHandler()
-        ],
+        handlers=handlers,
         force=True
     )
     
     _logger = logging.getLogger('FrameworkLogger')
     _configured = True
+    
+    # Log session start
+    _logger.info("=" * 60)
+    _logger.info("NEW SIMULATION SESSION STARTED")
+    _logger.info("=" * 60)
     
     # Log session start
     _logger.info("=" * 60)
@@ -66,7 +78,7 @@ def get_logger() -> logging.Logger:
 def log_agent_action(agent_id: int, step: int, action: str, details: Dict[str, Any] = None):
     """Log an agent action."""
     if not _configured:
-        setup_logging()
+        return
     
     base_msg = f"[Step {step:03d}] Agent {agent_id:03d} - {action.upper()}"
     

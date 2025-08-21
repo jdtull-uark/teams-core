@@ -204,8 +204,8 @@ model_params = {
         "type": "SliderInt",
         "value": 10,
         "label": "Initial tasks:",
-        "min": 1,
-        "max": 30,
+        "min": 10,
+        "max": 50,
         "step": 1,
     },
     "num_steps": {
@@ -224,11 +224,11 @@ model_params = {
         "max": 1,
         "step": 0.1,
     },
-    "psychological_safety_threshold": {
+    "contributed_psychological_safety": {
         "type": "SliderFloat",
-        "value": 0.7,
-        "label": "PS Threshold:",
-        "min": 0,
+        "value": 0.0,
+        "label": "Initial CPS:",
+        "min": -1,
         "max": 1,
         "step": 0.1,
     },
@@ -250,6 +250,7 @@ register_engineering_components()
 model = EngineeringTeamModel(
     num_managers=0,
     enable_logging=True,
+    verbose=False
 )
 
 page = SolaraViz(

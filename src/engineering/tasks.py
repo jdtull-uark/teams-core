@@ -7,7 +7,7 @@ import random
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
-from ..framework.interfaces import TaskGenerator
+from ..framework.core.interfaces import TaskGenerator
 
 class TaskStatus(Enum):
     BACKLOG = "backlog"
@@ -58,7 +58,7 @@ class SubTask:
             self.stop_step = step
         self.status = SubTaskStatus.COMPLETED
         self.progress = 1.0
-        print(f"Subtask {self.name} completed after {self.steps_completed} steps (required: {self.required_steps})")
+        # print(f"Subtask {self.name} completed after {self.steps_completed} steps (required: {self.required_steps})")
 
     def pause(self):
         if self.status == SubTaskStatus.IN_PROGRESS:
@@ -80,14 +80,16 @@ class SubTask:
             if actual_steps <= 0:
                 return 2.0  # Edge case: instant completion gets max reward
             
+            required_steps_with_learning = self.required_steps + len(self.required_knowledge) / 0.3 # 0.3 is the average learning rate in agent init
+
             # Grade based on efficiency: required_steps / actual_steps
             # This allows grades > 1.0 for exceptional performance
-            grade = self.required_steps / actual_steps
-            return max(0.0, grade)  # Only ensure it's not negative
+            grade = required_steps_with_learning / actual_steps
+            return max(0.0, grade)
             
         elif self.status == SubTaskStatus.IN_PROGRESS:
             if current_step is None:
-                print("Cannot grade an in-progress subtask without current step!")
+                # print("Cannot grade an in-progress subtask without current step!")
                 return 0.0
             
             # For in-progress tasks, estimate based on current progress
@@ -136,7 +138,7 @@ class Task:
             if step:
                 self.stop_step = step
             self.status = TaskStatus.COMPLETED
-            print(f"Task {self.name} completed with {len([st for st in self.subtasks if st.is_complete()])} completed subtasks out of {len(self.subtasks)}")
+            # print(f"Task {self.name} completed with {len([st for st in self.subtasks if st.is_complete()])} completed subtasks out of {len(self.subtasks)}")
         else:
             raise ValueError(f"Cannot complete task with status {self.status}")
 
@@ -187,12 +189,12 @@ class EngineeringTaskGenerator(TaskGenerator):
         if not hasattr(model, 'tasks') or self.tasks_created >= self.max_tasks:
             return False
         
-        return random.random() < self.task_creation_rate
+        return model.random.random() < self.task_creation_rate
     
     def generate_task(self, model, context: Dict[str, Any] = None) -> Task:
         """Generate a new engineering task."""
         self.tasks_created += 1
-        difficulty = random.randint(1, 10)
+        difficulty = model.random.randint(1, 10)
         
         task = Task(
             name=f"Engineering Task {self.tasks_created}",
@@ -204,15 +206,15 @@ class EngineeringTaskGenerator(TaskGenerator):
         for i in range(num_subtasks):
             required_knowledge = []
             if hasattr(model, 'knowledge_space'):
-                required_knowledge = random.sample(
+                required_knowledge = model.random.sample(
                     model.knowledge_space,
-                    k=min(random.randint(1, 5), len(model.knowledge_space))
+                    k=min(model.random.randint(1, 5), len(model.knowledge_space))
                 )
             
             subtask = SubTask(
                 name=f"{task.name} - Subtask {i+1}",
                 required_knowledge=required_knowledge,
-                difficulty=random.randint(1, 5)
+                difficulty=model.random.randint(1, 5)
             )
             task.subtasks.append(subtask)
         

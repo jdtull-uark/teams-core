@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 _logger: Optional[logging.Logger] = None
 _log_file: Optional[str] = None
 _configured = False
+_console_handler: Optional[logging.StreamHandler] = None
 
 def _generate_log_filename() -> str:
     """Generate a timestamped log filename with random ID."""
@@ -18,9 +19,17 @@ def _generate_log_filename() -> str:
     
     return f"logs/log_{date_str}_{time_str}_{random_id}.log"
 
-def setup_logging(log_file: str = None, log_level: int = logging.INFO):
+def setup_logging(log_file: str = None, log_level: int = logging.INFO, console_output: bool = True):
     """Initialize the logging system - call once at startup."""
-    global _logger, _log_file, _configured
+    global _logger, _log_file, _configured, _console_handler
+    
+    # Check if framework logging is already configured - if so, respect its console settings
+    framework_logger = logging.getLogger('FrameworkLogger')
+    if framework_logger.handlers:
+        # Framework logging is active - check if it has console output
+        has_console = any(isinstance(h, logging.StreamHandler) and h.stream.name == '<stderr>' for h in logging.getLogger().handlers)
+        if not has_console:
+            console_output = False  # Respect framework's verbose=False setting
     
     if log_file is None:
         log_file = _generate_log_filename()
@@ -30,14 +39,18 @@ def setup_logging(log_file: str = None, log_level: int = logging.INFO):
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(_log_file) if os.path.dirname(_log_file) else '.', exist_ok=True)
     
+    # Create handlers
+    handlers = [logging.FileHandler(_log_file, mode='a', encoding='utf-8')]
+    
+    if console_output:
+        _console_handler = logging.StreamHandler()
+        handlers.append(_console_handler)
+    
     # Configure logging
     logging.basicConfig(
         level=log_level,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(_log_file, mode='a', encoding='utf-8'),
-            logging.StreamHandler()  # Also log to console
-        ]
+        handlers=handlers
     )
     
     _logger = logging.getLogger('AgentLogger')
@@ -48,9 +61,9 @@ def setup_logging(log_file: str = None, log_level: int = logging.INFO):
     _logger.info(f"NEW SIMULATION SESSION STARTED")
     _logger.info("=" * 60)
 
-def create_new_log_file(log_file: str = None) -> str:
+def create_new_log_file(log_file: str = None, console_output: bool = True) -> str:
     """Create a new log file - closes current file and starts fresh."""
-    global _logger, _log_file, _configured
+    global _logger, _log_file, _configured, _console_handler
     
     if log_file is None:
         log_file = _generate_log_filename()
@@ -63,6 +76,7 @@ def create_new_log_file(log_file: str = None) -> str:
     
     # Reset configuration flag so setup_logging can work again
     _configured = False
+    _console_handler = None
     
     # Now setup fresh logging
     _log_file = log_file
@@ -70,14 +84,18 @@ def create_new_log_file(log_file: str = None) -> str:
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(_log_file) if os.path.dirname(_log_file) else '.', exist_ok=True)
     
+    # Create handlers
+    handlers = [logging.FileHandler(_log_file, mode='w', encoding='utf-8')]  # 'w' for new file
+    
+    if console_output:
+        _console_handler = logging.StreamHandler()
+        handlers.append(_console_handler)
+    
     # Use basicConfig now that handlers are cleared
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(_log_file, mode='w', encoding='utf-8'),  # 'w' for new file
-            logging.StreamHandler()  # Also log to console
-        ],
+        handlers=handlers,
         force=True
     )
     
@@ -127,7 +145,7 @@ def _format_details(details: Dict[str, Any]) -> str:
 def log_agent_action(unique_id: int, step: int, action: str, details: Dict[str, Any] = None):
     """Log an agent action with structured format."""
     if not _configured:
-        setup_logging()
+        return
     
     timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]  # Include milliseconds
     
@@ -185,3 +203,19 @@ def disable_logging():
     """Disable logging."""
     if _logger:
         _logger.disabled = True
+
+def enable_console_output():
+    """Enable console output for logging while keeping file logging active."""
+    global _console_handler
+    if _logger and not _console_handler:
+        _console_handler = logging.StreamHandler()
+        _console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        _logger.addHandler(_console_handler)
+
+def disable_console_output():
+    """Disable console output for logging while keeping file logging active."""
+    global _console_handler
+    if _logger and _console_handler:
+        _logger.removeHandler(_console_handler)
+        _console_handler.close()
+        _console_handler = None
