@@ -1,4 +1,5 @@
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import solara
 from mesa.visualization import SolaraViz, make_plot_component, make_space_component
 from src.engineering.model import EngineeringTeamModel
@@ -14,6 +15,22 @@ def agent_portrayal(agent):
         else:
             return {"color": "blue"}
     return {"color": "gray"}
+
+# Post-process function to add legend
+def add_legend(ax):
+    """Add a legend to the visualization based on agent status present"""
+    # Get unique agent types and their colors from current model state
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green',
+                  markersize=8, label='Searching for Agent'),
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='orange',
+                  markersize=8, label='Needs Knowledge'),
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue',
+                  markersize=8, label='Working'),
+    ]
+    
+    ax.legend(handles=legend_elements, loc='upper right')
+    return ax
 
 def make_knowledge_linechart(model):
     if callable(model):
@@ -34,7 +51,7 @@ def make_knowledge_linechart(model):
                 color="blue"
             )
 
-    ax.set_title("Knowledge")
+    ax.set_title("Average Member Knowledge")
     ax.set_xlabel("Simulation Step")
     ax.set_ylabel("Knowledge")
 
@@ -60,7 +77,7 @@ def make_psych_safety_linechart(model):
                 label=f"TEAM",
             )
 
-    ax.set_title("Psychological Safety")
+    ax.set_title("Team Psychological Safety")
     ax.set_xlabel("Simulation Step")
     ax.set_ylabel("Psychological Safety")
 
@@ -189,7 +206,11 @@ def make_task_status_chart(model):
     return solara.FigureMatplotlib(fig)
 
 
-graph = make_space_component(agent_portrayal, backend="matplotlib")
+graph = make_space_component(
+    agent_portrayal, 
+    backend="matplotlib",
+    post_process=add_legend
+)
 
 model_params = {
     "num_engineers": {
@@ -259,3 +280,5 @@ page = SolaraViz(
     model_params=model_params,  # Pass the params object directly
     name="TEAMS Model",
 )
+
+

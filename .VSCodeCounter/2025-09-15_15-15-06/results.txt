@@ -1,0 +1,59 @@
+Date : 2025-09-15 15:15:06
+Directory : c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src
+Total : 27 files,  2153 codes, 460 comments, 545 blanks, all 3158 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |         27 |      2,153 |        460 |        545 |      3,158 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                                         | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                                            |         27 |      2,153 |        460 |        545 |      3,158 |
+| . (Files)                                                                                                                                    |          2 |          0 |          3 |          2 |          5 |
+| engineering                                                                                                                                  |          9 |      1,449 |        264 |        336 |      2,049 |
+| framework                                                                                                                                    |         10 |        560 |        163 |        154 |        877 |
+| framework (Files)                                                                                                                            |          2 |         16 |          0 |          4 |         20 |
+| framework\core                                                                                                                               |          6 |        456 |        145 |        120 |        721 |
+| framework\utils                                                                                                                              |          2 |         88 |         18 |         30 |        136 |
+| rules                                                                                                                                        |          2 |          0 |          0 |          2 |          2 |
+| utils                                                                                                                                        |          4 |        144 |         30 |         51 |        225 |
++----------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                                                                     | language | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\__init__.py                        | Python   |          0 |          3 |          1 |          4 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\__init__.py            | Python   |         12 |          3 |          2 |         17 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\agents.py              | Python   |         55 |         11 |         14 |         80 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\behaviors.py           | Python   |        137 |         44 |         51 |        232 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\components.py          | Python   |        328 |         50 |         71 |        449 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\interactions.py        | Python   |        213 |         35 |         58 |        306 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\model.py               | Python   |        249 |         46 |         56 |        351 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\rules.py               | Python   |         59 |         18 |         16 |         93 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\tasks.py               | Python   |        157 |         28 |         40 |        225 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\engineering\utils.py               | Python   |        239 |         29 |         28 |        296 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\__init__.py              | Python   |         16 |          0 |          3 |         19 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\core\__init__.py         | Python   |          8 |          0 |          2 |         10 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\core\agent.py            | Python   |        109 |         26 |         26 |        161 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\core\config.py           | Python   |         51 |         11 |         13 |         75 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\core\interfaces.py       | Python   |         47 |         25 |         11 |         83 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\core\model.py            | Python   |        160 |         63 |         48 |        271 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\core\registry.py         | Python   |         81 |         20 |         20 |        121 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\interfaces.py            | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\utils\logging.py         | Python   |         88 |         18 |         29 |        135 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\framework\utils\setup.py           | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\model.py                           | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\rules\base.py                      | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\rules\psychological_safety_rule.py | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\utils\__init__.py                  | Python   |          0 |          0 |          1 |          1 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\utils\analysis.py                  | Python   |          0 |          0 |          2 |          2 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\utils\log.py                       | Python   |        144 |         30 |         47 |        221 |
+| c:\Users\jdtull\OneDrive - University of Arkansas\Documents\CRED\Projects\TEAMS\teams-core\teams-core\src\utils\utils.py                     | Python   |          0 |          0 |          1 |          1 |
+| Total                                                                                                                                        |          |      2,153 |        460 |        545 |      3,158 |
++----------------------------------------------------------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

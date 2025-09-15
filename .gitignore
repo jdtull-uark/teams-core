@@ -3,6 +3,7 @@ random_test.ipynb
 logs/
 results/
 *.png
+*.gif
 *.csv
 simulations/
 

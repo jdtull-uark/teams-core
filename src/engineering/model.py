@@ -92,7 +92,7 @@ class EngineeringTeamModel(BaseModel):
                 change = final_efficacy - self._initial_efficacy
                 self.verbose_print(f"Change in Team Efficacy: {change:+.3f}")
             self.verbose_print("=" * 23)
-    
+
     @classmethod
     def from_config(cls, config: ModelConfig) -> 'EngineeringTeamModel':
         """Create a model instance from a ModelConfig object."""
