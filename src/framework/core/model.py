@@ -13,7 +13,7 @@ class BaseModel(mesa.Model):
     Base model class with support for pluggable components and configuration.
     """
     
-    def __init__(self, config: ModelConfig, print_progress_bar: bool = True):
+    def __init__(self, config: ModelConfig, print_progress_bar: bool = False):
 
         super().__init__()
 
@@ -22,6 +22,7 @@ class BaseModel(mesa.Model):
 
         # Store verbose setting for easy access
         self.verbose = getattr(self.config, 'verbose', True)
+        self.max_steps = getattr(self.config, 'num_steps', 100)
 
         self.verbose_print("Initializing Mesa MultiGrid...", end=' ')
         # Initialize space

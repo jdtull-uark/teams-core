@@ -43,6 +43,13 @@ class KnowledgeShareHandler(InteractionHandler):
         else:
             requested_knowledge = []
         
+
+        initiator.log_action("knowledge_requested", {
+            "recipient": recipient.unique_id,
+            "requested_knowledge": requested_knowledge,
+            "has_current_task": bool(task_manager and task_manager.current_subtask)
+        })
+        
         if requested_knowledge:
             shareable = recipient_knowledge.get_shareable_knowledge(requested_knowledge)
             if shareable:

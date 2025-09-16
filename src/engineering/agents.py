@@ -17,7 +17,7 @@ class EngineerAgent(BaseAgent):
         # Engineer-specific attributes
         self.perceived_psychological_safety = random.uniform(0.0, 1.0)
         self.contributed_psychological_safety = random.uniform(-1.0, 1.0)
-        self.learning_rate = random.uniform(0.01, 0.05)
+        self.learning_rate = random.uniform(0.2, 0.4)
         self.communication_skill = random.uniform(0.1, 1.0)
         self.motivation = random.uniform(0.1, 1.0)
         self.work_efficiency = random.uniform(0.5, 1.5)

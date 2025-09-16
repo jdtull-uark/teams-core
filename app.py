@@ -32,6 +32,34 @@ def add_legend(ax):
     ax.legend(handles=legend_elements, loc='upper right')
     return ax
 
+def make_task_completion_linechart(model):
+    if callable(model):
+        model = model()
+
+    fig = Figure(figsize=(8, 5), dpi=100)
+    ax = fig.subplots()
+
+    model_data = model.datacollector.get_model_vars_dataframe()
+    agent_data = model.datacollector.get_agent_vars_dataframe()
+
+    for column in model_data.columns:
+        if column == "Completed_Tasks":
+            ax.plot(
+                model_data.index,
+                model_data[column],
+                label=f"TEAM",
+                color="blue"
+            )
+
+    ax.set_title("Total Tasks Completed")
+    ax.set_xlabel("Simulation Step")
+    ax.set_xlim(0, model.max_steps)
+    ax.set_ylabel("Tasks Completed")
+
+    fig.tight_layout()
+
+    return solara.FigureMatplotlib(fig)
+
 def make_knowledge_linechart(model):
     if callable(model):
         model = model()
@@ -53,6 +81,7 @@ def make_knowledge_linechart(model):
 
     ax.set_title("Average Member Knowledge")
     ax.set_xlabel("Simulation Step")
+    ax.set_xlim(0, model.max_steps)
     ax.set_ylabel("Knowledge")
 
     fig.tight_layout()
@@ -78,6 +107,7 @@ def make_psych_safety_linechart(model):
             )
 
     ax.set_title("Team Psychological Safety")
+    ax.set_xlim(0, model.max_steps)
     ax.set_xlabel("Simulation Step")
     ax.set_ylabel("Psychological Safety")
 
@@ -108,6 +138,7 @@ def make_team_efficacy_linechart(model):
     ax.set_xlabel("Simulation Step")
     ax.set_ylabel("Team Efficacy")
     ax.set_ylim(0, 1)  # Team efficacy is bounded between 0 and 1
+    ax.set_xlim(0, model.max_steps)
     ax.legend()
     ax.grid(True, alpha=0.3)
 
@@ -276,7 +307,7 @@ model = EngineeringTeamModel(
 
 page = SolaraViz(
     model,  # Pass the factory function, not a model instance
-    components=[graph, make_psych_safety_linechart, make_knowledge_linechart, make_team_efficacy_linechart, make_task_status_chart],
+    components=[graph, make_task_completion_linechart, make_psych_safety_linechart, make_knowledge_linechart, make_team_efficacy_linechart, make_task_status_chart],
     model_params=model_params,  # Pass the params object directly
     name="TEAMS Model",
 )

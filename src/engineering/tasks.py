@@ -79,8 +79,8 @@ class SubTask:
             actual_steps = self.stop_step - self.start_step
             if actual_steps <= 0:
                 return 2.0  # Edge case: instant completion gets max reward
-            
-            required_steps_with_learning = self.required_steps + len(self.required_knowledge) / 0.3 # 0.3 is the average learning rate in agent init
+
+            required_steps_with_learning = self.required_steps + len(self.required_knowledge) / 0.1 # 0.1 is the average learning rate in agent init
 
             # Grade based on efficiency: required_steps / actual_steps
             # This allows grades > 1.0 for exceptional performance

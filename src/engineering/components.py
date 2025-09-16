@@ -303,13 +303,13 @@ class KnowledgeManager(Component):
         if concept in self.learned_knowledge:
             return True
         
-        learning_rate = getattr(self.owner, 'learning_rate', 0.05)
+        learning_rate = getattr(self.owner, 'learning_rate', 0.1)
         work_efficiency = getattr(self.owner, 'work_efficiency', 1.0)
         
         progress_increment = (
             learning_rate * 
             work_efficiency * 
-            random.uniform(0.5, 1.5)
+            random.uniform(0.75, 1.25)
         )
         
         self.concept_learning_progress[concept] += progress_increment
