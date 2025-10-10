@@ -181,7 +181,7 @@ class MovementBehavior(AgentBehavior):
 class EvaluationBehavior(AgentBehavior):
     """Behavior for agents to evaluate team members' performance."""
     
-    def __init__(self, evaluation_frequency: float = 0.05):
+    def __init__(self, evaluation_frequency: float = 0.5):
         """
         Initialize evaluation behavior.
         
