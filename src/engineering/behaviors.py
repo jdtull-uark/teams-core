@@ -16,15 +16,25 @@ class WorkBehavior(AgentBehavior):
     
     def can_execute(self, agent: 'BaseAgent', model: 'BaseModel') -> bool:
         """Check if agent can work (has tasks and is available)."""
-        return (hasattr(agent, 'is_available') and agent.is_available and
-                hasattr(agent, 'current_task') and agent.current_task is not None)
+        task_manager = agent.get_component("task_manager")
+        return task_manager is not None and not task_manager.all_tasks_completed
     
     def execute(self, agent: 'BaseAgent', model: 'BaseModel') -> None:
         """Execute work on current task."""
         task_manager = agent.get_component("task_manager")
-        if task_manager and not task_manager.all_tasks_completed:
-            # Work is handled in the task_manager component step
-            pass
+        if not task_manager:
+            return
+        
+        if not task_manager.all_tasks_completed:
+            task_manager._work_on_current_task()
+        else:
+            # Close task manager and soft reset other components when all tasks completed
+            task_manager.close()
+            # Reset communication state to stop any lingering search behavior
+            communication_manager = agent.get_component("communication_manager")
+            if communication_manager:
+                communication_manager.soft_reset()
+            agent.log_action("status", {"message": "All tasks completed"})
 
 class LearnBehavior(AgentBehavior):
     """Behavior for learning required knowledge."""
@@ -60,6 +70,19 @@ class LearnBehavior(AgentBehavior):
         if not all([task_manager, knowledge_manager, communication_manager]):
             return
         
+        # Continue learning concepts in progress
+        concepts_to_complete = []
+        for concept, progress in knowledge_manager.concept_learning_progress.items():
+            if knowledge_manager._continue_learning(concept):
+                concepts_to_complete.append(concept)
+        
+        # Complete learned concepts
+        for concept in concepts_to_complete:
+            knowledge_manager.learned_knowledge.add(concept)
+            del knowledge_manager.concept_learning_progress[concept]
+            agent.log_action("knowledge_learned", {"concept": concept})
+        
+        # Check for missing knowledge and initiate learning
         missing_knowledge = knowledge_manager.get_missing_knowledge(
             task_manager.current_subtask.required_knowledge
         )
@@ -78,18 +101,28 @@ class LearnBehavior(AgentBehavior):
                 # Continue learning the concept
                 knowledge_manager.learn_concept(concept)
 
-class CollaborationBehavior(AgentBehavior):
+class CommunicationBehavior(AgentBehavior):
     """Behavior for collaborating with other agents."""
     
     def can_execute(self, agent: 'BaseAgent', model: 'BaseModel') -> bool:
         """Check if agent can collaborate."""
-        return (hasattr(agent, 'motivation') and agent.motivation > 0.5 and
-                hasattr(agent, 'communication_skill') and agent.communication_skill > 0.3)
+        communication_manager = agent.get_component("communication_manager")
+        return communication_manager is not None
     
     def execute(self, agent: 'BaseAgent', model: 'BaseModel') -> None:
         """Execute collaboration behavior."""
-        # Collaboration happens through interactions initiated by CommunicationManager
-        pass
+        communication_manager = agent.get_component("communication_manager")
+        if not communication_manager:
+            return
+        
+        # Look for nearby agents to interact with
+        if hasattr(agent.model, 'space'):
+            neighbors = agent.model.space.get_neighbors(
+                agent.position, moore=True, include_center=False
+            )
+            
+            if neighbors:
+                communication_manager._attempt_interaction(neighbors)
 
 class MovementBehavior(AgentBehavior):
     """Behavior for agent movement in space."""

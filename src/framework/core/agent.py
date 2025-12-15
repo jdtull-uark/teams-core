@@ -104,16 +104,6 @@ class BaseAgent(mesa.Agent):
                         "behavior": type(behavior).__name__,
                         "error": str(e)
                     })
-                    
-            # Step all components
-            for name, component in self.components.items():
-                try:
-                    component.step()
-                except Exception as e:
-                    self.log_action("component_error", {
-                        "component": name,
-                        "error": str(e)
-                    })
         except Exception as e:
             self.log_action("step_error", {"error": str(e)})
             raise 

@@ -34,31 +34,11 @@ class TaskManager(Component):
         self.soft_reset()
     
     def step(self) -> None:
-        """Execute task management logic."""
-        # Log agent status overview
-        task_overview = {
-            "agent_id": self.owner.unique_id,
-            "total_tasks": len(self.assigned_tasks),
-            "tasks": [{
-                "task_id": task.id,
-                "status": task.status.name,
-                "subtasks": [{
-                    "name": st.name,
-                    "status": st.status.name
-                } for st in task.subtasks]
-            } for task in self.assigned_tasks]
-        }
-        
-        if not self.all_tasks_completed:
-            self._work_on_current_task()
-        else:
-            # Close task manager and soft reset other components when all tasks completed
-            self.close()
-            # Reset communication state to stop any lingering search behavior
-            communication_manager = self.owner.get_component("communication_manager")
-            if communication_manager:
-                communication_manager.soft_reset()
-            self.owner.log_action("status", {"message": "All tasks completed"})
+        """
+        DEPRECATED: Step logic has been moved to WorkBehavior.
+        This method is kept for compatibility but does nothing.
+        """
+        pass
     
     def assign_task(self, task: Task) -> None:
         """Assign a new task."""
@@ -271,22 +251,14 @@ class KnowledgeManager(Component):
         self.owner = owner
     
     def soft_reset(self) -> None:
-        """Reset transient learning state while preserving learned knowledge."""
         self.concept_learning_progress.clear()
     
     def step(self) -> None:
-        """Execute knowledge management logic."""
-        # Continue learning concepts in progress
-        concepts_to_complete = []
-        for concept, progress in self.concept_learning_progress.items():
-            if self._continue_learning(concept):
-                concepts_to_complete.append(concept)
-        
-        # Complete learned concepts
-        for concept in concepts_to_complete:
-            self.learned_knowledge.add(concept)
-            del self.concept_learning_progress[concept]
-            self.owner.log_action("knowledge_learned", {"concept": concept})
+        """
+        DEPRECATED: Step logic has been moved to LearnBehavior.
+        This method is kept for compatibility but does nothing.
+        """
+        pass
     
     def learn_concept(self, concept: str) -> bool:
         """Start or continue learning a concept."""
@@ -404,15 +376,11 @@ class CommunicationManager(Component):
         self.searching_agents_targets = []
     
     def step(self) -> None:
-        """Execute communication logic."""
-        # Look for nearby agents to interact with
-        if hasattr(self.owner.model, 'space'):
-            neighbors = self.owner.model.space.get_neighbors(
-                self.owner.position, moore=True, include_center=False
-            )
-            
-            if neighbors:
-                self._attempt_interaction(neighbors)
+        """
+        DEPRECATED: Step logic has been moved to CollaborationBehavior.
+        This method is kept for compatibility but does nothing.
+        """
+        pass
     
     def _attempt_interaction(self, neighbors) -> None:
         """Attempt to interact with nearby agents."""

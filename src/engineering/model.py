@@ -8,7 +8,7 @@ from ..framework.core.model import BaseModel
 from ..framework.core.config import ModelConfig
 from ..framework.core.registry import registry
 from .tasks import Task, SubTask, TaskStatus
-from .agents import EngineerAgent, ManagerAgent
+from .agents import EngineerAgent
 
 class EngineeringTeamModel(BaseModel):
     """Engineering team simulation model."""
@@ -46,7 +46,7 @@ class EngineeringTeamModel(BaseModel):
         self.psychological_safety = config.__dict__.get('psychological_safety', 0.5)
         self.contributed_psychological_safety = config.__dict__.get('contributed_psychological_safety', 0)
         
-        super().__init__(config, print_progress_bar=print_progress_bar)
+        super().__init__(config)
         
         # Create knowledge space
         self._create_knowledge_space()
@@ -74,10 +74,7 @@ class EngineeringTeamModel(BaseModel):
         """Execute one model step with team efficacy logging."""
         # Print initial team efficacy on first step
         if self.step_count == 0:
-            initial_efficacy = self._calculate_average_team_efficacy()
             self.verbose_print(f"=== SIMULATION START ===")
-            self.verbose_print(f"Starting Average Perceived Team Efficacy: {initial_efficacy:.3f}")
-            self.verbose_print(f"Starting Perceived Psych Safety: {self.psychological_safety}")
             self.verbose_print("=" * 25)
         
         # Call parent step method
@@ -85,54 +82,8 @@ class EngineeringTeamModel(BaseModel):
         
         # Print final team efficacy when simulation ends OR on the last step
         if (not self.running or self.step_count >= self.config.num_steps):
-            final_efficacy = self._calculate_average_team_efficacy()
             self.verbose_print(f"=== SIMULATION END ===")
-            self.verbose_print(f"Final Average Perceived Team Efficacy: {final_efficacy:.3f}")
-            if hasattr(self, '_initial_efficacy'):
-                change = final_efficacy - self._initial_efficacy
-                self.verbose_print(f"Change in Team Efficacy: {change:+.3f}")
             self.verbose_print("=" * 23)
-
-    @classmethod
-    def from_config(cls, config: ModelConfig) -> 'EngineeringTeamModel':
-        """Create a model instance from a ModelConfig object."""
-        # Extract parameters from config
-        num_engineers = 5  # default
-        num_managers = 0   # default
-        initial_tasks = config.__dict__.get('initial_tasks', 10)
-        psychological_safety = config.__dict__.get('psychological_safety', 0.5)
-        
-        # Extract from agents config
-        if 'EngineerAgent' in config.agents:
-            num_engineers = config.agents['EngineerAgent'].get('count', 5)
-        if 'ManagerAgent' in config.agents:
-            num_managers = config.agents['ManagerAgent'].get('count', 0)
-        
-        # Create instance using parameter-based constructor
-        instance = cls.__new__(cls)  # Create instance without calling __init__
-        
-        # Add engineering-specific attributes before calling super
-        instance.tasks = {}
-        instance.knowledge_space = []
-        instance.psychological_safety = psychological_safety
-        
-        # Call BaseModel.__init__ directly (this will set instance.verbose from config)
-        BaseModel.__init__(instance, config)
-        
-        # Create knowledge space
-        instance._create_knowledge_space()
-        
-        # Create agents from config
-        instance._create_agents()
-
-        # Create initial tasks
-        instance._create_initial_tasks()
-        
-        # Assign initial tasks to engineers
-        instance._assign_initial_tasks()
-        
-        return instance
-        
     
     def _create_knowledge_space(self, size: int = 100):
         """Create the knowledge space for the simulation."""

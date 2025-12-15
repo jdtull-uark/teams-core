@@ -20,7 +20,7 @@ def register_engineering_components():
     # Register behaviors
     registry.register_behavior("WorkBehavior", behaviors.WorkBehavior)
     registry.register_behavior("LearnBehavior", behaviors.LearnBehavior)
-    registry.register_behavior("CollaborationBehavior", behaviors.CollaborationBehavior)
+    registry.register_behavior("CollaborationBehavior", behaviors.CommunicationBehavior)
     registry.register_behavior("MovementBehavior", behaviors.MovementBehavior)
     registry.register_behavior("EvaluationBehavior", behaviors.EvaluationBehavior)
     
