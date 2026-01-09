@@ -4,21 +4,12 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-        {
-            "name": "Python Debugger: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/my_simulation/run_simulation_params.py",
-            "console": "integratedTerminal",
-            "justMyCode": false
-        },
         {
             "name": "Debug Solara App",
             "type": "debugpy",
             "request": "launch",
             "module": "solara",
-            "args": ["run", "app.py", "--host", "localhost", "--port", "8765"],
+            "args": ["run", "${workspaceFolder}/examples/psych_safety_example/app.py", "--host", "localhost", "--port", "8765"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {

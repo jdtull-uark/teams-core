@@ -15,14 +15,11 @@ class EngineerAgent(BaseAgent):
         super().__init__(unique_id, model)
         
         # Engineer-specific attributes
-        self.perceived_psychological_safety = random.uniform(0.0, 1.0)
-        self.contributed_psychological_safety = random.uniform(-1.0, 1.0)
         self.learning_rate = random.uniform(0.2, 0.4)
         self.communication_skill = random.uniform(0.1, 1.0)
         self.motivation = random.uniform(0.1, 1.0)
         self.work_efficiency = random.uniform(0.5, 1.5)
         self.is_available = True
-        self.perceived_team_efficacy = 0.5
         
         # Add engineering-specific components
         self.add_component("task_manager", TaskManager())

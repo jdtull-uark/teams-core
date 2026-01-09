@@ -1,12 +1,11 @@
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import solara
-from mesa.visualization import SolaraViz, make_space_component
+from mesa.visualization import SolaraViz, make_plot_component, make_space_component
 from src.engineering.model import EngineeringTeamModel
 from src.engineering.agents import EngineerAgent
 
 def agent_portrayal(agent):
-    """Portray agents based on their current state."""
     if isinstance(agent, EngineerAgent):
         comm_manager = agent.get_component("communication_manager")
         if comm_manager and hasattr(comm_manager, 'searching_agents') and comm_manager.searching_agents:
@@ -17,8 +16,10 @@ def agent_portrayal(agent):
             return {"color": "blue"}
     return {"color": "gray"}
 
+# Post-process function to add legend
 def add_legend(ax):
-    """Add a legend to the visualization."""
+    """Add a legend to the visualization based on agent status present"""
+    # Get unique agent types and their colors from current model state
     legend_elements = [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green',
                   markersize=8, label='Searching for Agent'),
@@ -27,11 +28,11 @@ def add_legend(ax):
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue',
                   markersize=8, label='Working'),
     ]
+    
     ax.legend(handles=legend_elements, loc='upper right')
     return ax
 
 def make_task_completion_linechart(model):
-    """Create a chart showing total tasks completed over time."""
     if callable(model):
         model = model()
 
@@ -39,29 +40,82 @@ def make_task_completion_linechart(model):
     ax = fig.subplots()
 
     model_data = model.datacollector.get_model_vars_dataframe()
+    agent_data = model.datacollector.get_agent_vars_dataframe()
 
-    if "Completed_Tasks" in model_data.columns:
-        ax.plot(
-            model_data.index,
-            model_data["Completed_Tasks"],
-            label="Completed Tasks",
-            color="blue",
-            linewidth=2
-        )
+    for column in model_data.columns:
+        if column == "Completed_Tasks":
+            ax.plot(
+                model_data.index,
+                model_data[column],
+                label=f"TEAM",
+                color="blue"
+            )
 
     ax.set_title("Total Tasks Completed")
     ax.set_xlabel("Simulation Step")
-    ax.set_ylabel("Tasks Completed")
     ax.set_xlim(0, model.max_steps)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+    ax.set_ylabel("Tasks Completed")
 
     fig.tight_layout()
 
     return solara.FigureMatplotlib(fig)
 
 def make_knowledge_linechart(model):
-    """Create a chart showing average knowledge over time."""
+    if callable(model):
+        model = model()
+
+    fig = Figure(figsize=(8, 5), dpi=100)
+    ax = fig.subplots()
+
+    model_data = model.datacollector.get_model_vars_dataframe()
+    agent_data = model.datacollector.get_agent_vars_dataframe()
+
+    for column in model_data.columns:
+        if column == "Average_Knowledge":
+            ax.plot(
+                model_data.index,
+                model_data[column],
+                label=f"TEAM",
+                color="blue"
+            )
+
+    ax.set_title("Average Member Knowledge")
+    ax.set_xlabel("Simulation Step")
+    ax.set_xlim(0, model.max_steps)
+    ax.set_ylabel("Knowledge")
+
+    fig.tight_layout()
+
+    return solara.FigureMatplotlib(fig)
+
+def make_psych_safety_linechart(model):
+    if callable(model):
+        model = model()
+
+    fig = Figure(figsize=(8, 5), dpi=100)
+    ax = fig.subplots()
+
+    model_data = model.datacollector.get_model_vars_dataframe()
+    agent_data = model.datacollector.get_agent_vars_dataframe()
+
+    for column in model_data.columns:
+        if column == "Average_PPS":
+            ax.plot(
+                model_data.index,
+                model_data[column],
+                label=f"TEAM",
+            )
+
+    ax.set_title("Team Psychological Safety")
+    ax.set_xlim(0, model.max_steps)
+    ax.set_xlabel("Simulation Step")
+    ax.set_ylabel("Psychological Safety")
+
+    fig.tight_layout()
+
+    return solara.FigureMatplotlib(fig)
+
+def make_team_efficacy_linechart(model):
     if callable(model):
         model = model()
 
@@ -70,18 +124,20 @@ def make_knowledge_linechart(model):
 
     model_data = model.datacollector.get_model_vars_dataframe()
 
-    if "Average_Knowledge" in model_data.columns:
+    # Plot average team efficacy
+    if "Average_Team_Efficacy" in model_data.columns:
         ax.plot(
             model_data.index,
-            model_data["Average_Knowledge"],
-            label="Average Knowledge",
-            color="purple",
+            model_data["Average_Team_Efficacy"],
+            label="Average Team Efficacy",
+            color="green",
             linewidth=2
         )
 
-    ax.set_title("Average Team Knowledge")
+    ax.set_title("Perceived Team Efficacy")
     ax.set_xlabel("Simulation Step")
-    ax.set_ylabel("Knowledge Items")
+    ax.set_ylabel("Team Efficacy")
+    ax.set_ylim(0, 1)  # Team efficacy is bounded between 0 and 1
     ax.set_xlim(0, model.max_steps)
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -141,11 +197,12 @@ def make_task_status_chart(model):
     # Create horizontal bar chart
     y_pos = range(len(agents))
     
-    # Create bars
+    # Create bars (just for visuals - length doesn't matter much)
     bars = ax.barh(y_pos, [1] * len(agents), color=colors, alpha=0.7)
     
     # Add task text on the bars
     for i, (bar, task) in enumerate(zip(bars, tasks)):
+        # Truncate long task names
         display_task = task[:30] + "..." if len(task) > 30 else task
         ax.text(0.5, bar.get_y() + bar.get_height()/2, display_task, 
                 ha='center', va='center', fontweight='bold', fontsize=9)
@@ -156,22 +213,36 @@ def make_task_status_chart(model):
     ax.set_xlabel('Current Task')
     ax.set_title(f'Agent Task Status (Step {model.steps})')
     ax.set_xlim(0, 1)
+    
+    # Remove x-axis ticks since they're not meaningful
     ax.set_xticks([])
+    
+    # Invert y-axis to show Agent 0 at the top
     ax.invert_yaxis()
+    
+    # Add grid for better readability
     ax.grid(True, axis='y', alpha=0.3)
     
     fig.tight_layout()
     
     return solara.FigureMatplotlib(fig)
 
-# Create space visualization
+
+# Duplicate functions removed - kept the original definitions above
+    ax.set_xlabel("Simulation Step")
+    ax.set_ylabel("Psychological Safety")
+
+    fig.tight_layout()
+
+    return solara.FigureMatplotlib(fig)
+
+
 graph = make_space_component(
     agent_portrayal, 
     backend="matplotlib",
     post_process=add_legend
 )
 
-# Model parameters
 model_params = {
     "num_engineers": {
         "type": "SliderInt",
@@ -185,9 +256,9 @@ model_params = {
         "type": "SliderInt",
         "value": 10,
         "label": "Initial tasks:",
-        "min": 5,
+        "min": 10,
         "max": 50,
-        "step": 5,
+        "step": 1,
     },
     "num_steps": {
         "type": "SliderInt",
@@ -196,6 +267,22 @@ model_params = {
         "min": 10,
         "max": 1000,
         "step": 10,
+    },
+    "psychological_safety": {
+        "type": "SliderFloat",
+        "value": 0.5,
+        "label": "Initial PS:",
+        "min": 0,
+        "max": 1,
+        "step": 0.1,
+    },
+    "contributed_psychological_safety": {
+        "type": "SliderFloat",
+        "value": 0.0,
+        "label": "Initial CPS:",
+        "min": -1,
+        "max": 1,
+        "step": 0.1,
     },
     "grid_size": {
         "type": "SliderInt",
@@ -207,26 +294,22 @@ model_params = {
     },
 }
 
-# Register engineering components
+
+# Register all engineering components first
 from src.engineering.utils import register_engineering_components
 register_engineering_components()
 
-# Create model instance
 model = EngineeringTeamModel(
     num_managers=0,
     enable_logging=True,
     verbose=False
 )
 
-# Create Solara visualization
 page = SolaraViz(
-    model,
-    components=[
-        graph, 
-        make_task_completion_linechart, 
-        make_knowledge_linechart, 
-        make_task_status_chart
-    ],
-    model_params=model_params,
-    name="TEAMS Core Model - Knowledge Sharing & Task Completion",
+    model,  # Pass the factory function, not a model instance
+    components=[graph, make_task_completion_linechart, make_psych_safety_linechart, make_knowledge_linechart, make_team_efficacy_linechart, make_task_status_chart],
+    model_params=model_params,  # Pass the params object directly
+    name="TEAMS Model",
 )
+
+

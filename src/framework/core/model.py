@@ -33,7 +33,7 @@ class BaseModel(mesa.Model):
         )
         self.verbose_print("Done.")
         
-        # Component systems
+        # Components
         self.interaction_handlers: Dict[str, InteractionHandler] = {}
         self.task_generators: List[TaskGenerator] = []
         self.rules: List[Rule] = []

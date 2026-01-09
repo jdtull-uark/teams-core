@@ -217,6 +217,8 @@ class EngineeringTaskGenerator(TaskGenerator):
                 difficulty=model.random.randint(1, 5)
             )
             task.subtasks.append(subtask)
+
+        # TODO: Add task assignment logic
         
         # Add task to model if it has a task storage
         if hasattr(model, 'tasks'):

@@ -14,37 +14,46 @@ class EngineeringTeamModel(BaseModel):
     """Engineering team simulation model."""
     
     def __init__(self, 
+                 config: ModelConfig = None,
                  num_engineers: int = 5,
                  num_managers: int = 0,
                  initial_tasks: int = 10,
                  num_steps: int = 100,
-                 psychological_safety: float = 0.5,
-                 contributed_psychological_safety: float = 0,
                  grid_size: int = 10,
                  enable_logging: bool = True,
                  verbose: bool = False,
                  print_progress_bar: bool = True,
                  random_seed: int = None):
-        """Create a model instance directly from parameters."""
-        # Create config from parameters
-        config = create_engineering_config(
-            num_engineers=num_engineers,
-            num_managers=num_managers,
-            initial_tasks=initial_tasks,
-            num_steps=num_steps,
-            psychological_safety=psychological_safety,
-            contributed_psychological_safety=contributed_psychological_safety,
-            grid_size=grid_size,
-            enable_logging=enable_logging,
-            verbose=verbose,
-            random_seed=random_seed
-        )
+        """Create a model instance from config or parameters.
+        
+        Args:
+            config: Optional ModelConfig. If provided, all other parameters are ignored.
+            num_engineers: Number of engineer agents
+            num_managers: Number of manager agents
+            initial_tasks: Number of initial tasks
+            num_steps: Number of simulation steps
+            grid_size: Size of the grid
+            enable_logging: Enable logging
+            verbose: Verbose output
+            print_progress_bar: Show progress bar
+            random_seed: Random seed
+        """
+        # Create config from parameters if not provided
+        if config is None:
+            config = create_engineering_config(
+                num_engineers=num_engineers,
+                num_managers=num_managers,
+                initial_tasks=initial_tasks,
+                num_steps=num_steps,
+                grid_size=grid_size,
+                enable_logging=enable_logging,
+                verbose=verbose,
+                random_seed=random_seed
+            )
         
         # Add engineering-specific attributes before calling super
         self.tasks: Dict[str, Task] = {}
         self.knowledge_space: List[str] = []
-        self.psychological_safety = config.__dict__.get('psychological_safety', 0.5)
-        self.contributed_psychological_safety = config.__dict__.get('contributed_psychological_safety', 0)
         
         super().__init__(config)
         
@@ -59,20 +68,10 @@ class EngineeringTeamModel(BaseModel):
         
         # Assign initial tasks to engineers
         self._assign_initial_tasks()
-        
-        # Store initial team efficacy for comparison
-        self._initial_efficacy = self._calculate_average_team_efficacy()
     
-    def _calculate_average_team_efficacy(self) -> float:
-        """Calculate the current average team efficacy."""
-        if not self.agents:
-            return 0.5
-        total = sum(getattr(agent, 'perceived_team_efficacy', 0.5) for agent in self.agents)
-        return total / len(self.agents)
-
     def step(self) -> None:
-        """Execute one model step with team efficacy logging."""
-        # Print initial team efficacy on first step
+        """Execute one model step."""
+        # Print initial message on first step
         if self.step_count == 0:
             self.verbose_print(f"=== SIMULATION START ===")
             self.verbose_print("=" * 25)
@@ -80,7 +79,7 @@ class EngineeringTeamModel(BaseModel):
         # Call parent step method
         super().step()
         
-        # Print final team efficacy when simulation ends OR on the last step
+        # Print final message when simulation ends
         if (not self.running or self.step_count >= self.config.num_steps):
             self.verbose_print(f"=== SIMULATION END ===")
             self.verbose_print("=" * 23)
@@ -104,19 +103,6 @@ class EngineeringTeamModel(BaseModel):
     def _create_agents(self):
         """Create agents from configuration."""
         super()._create_agents()
-
-        # Set initial perceived psychological safety for all agents
-        min_psych_safety = max(0, self.psychological_safety - 0.25)
-        max_psych_safety = min(1, self.psychological_safety + 0.25)
-        for agent in self.agents:
-            setattr(agent, 'perceived_psychological_safety', self.random.uniform(min_psych_safety, max_psych_safety))
-
-        # Set initial contributed psychological safety for all agents
-        min_contributed_psych_safety = max(-1, self.contributed_psychological_safety - 0.5)
-        max_contributed_psych_safety = min(1, self.contributed_psychological_safety + 0.5)
-        for agent in self.agents:
-            setattr(agent, 'contributed_psychological_safety', self.random.uniform(min_contributed_psych_safety, max_contributed_psych_safety))
-
 
         # Distribute initial knowledge to all engineer agents
         for agent in self.agents:
@@ -191,8 +177,6 @@ def create_engineering_config(
     num_managers: int = 0,
     initial_tasks: int = 10,
     num_steps: int = 100,
-    psychological_safety: float = 0.5,
-    contributed_psychological_safety: float = 0,
     enable_logging: bool = True,
     verbose: bool = True,
     grid_size: int = 10,
@@ -215,9 +199,8 @@ def create_engineering_config(
                 "behaviors": [
                     {"type": "WorkBehavior"},
                     {"type": "LearnBehavior"},
-                    {"type": "CollaborationBehavior"},
-                    {"type": "MovementBehavior"},
-                    {"type": "EvaluationBehavior"}
+                    {"type": "CommunicationBehavior"},
+                    {"type": "MovementBehavior"}
                 ]
             }
         },
@@ -232,11 +215,6 @@ def create_engineering_config(
                 "name": "help_handler", 
                 "type": "HelpRequestHandler",
                 "params": {}
-            },
-            {
-                "name": "evaluation_handler",
-                "type": "PerformanceEvaluationHandler",
-                "params": {}
             }
         ],
         
@@ -244,44 +222,27 @@ def create_engineering_config(
             {
                 "type": "EngineeringTaskGenerator",
                 "params": {
-                    "task_creation_rate": 0.05,
+                    "task_creation_rate": 0.0,
                     "max_tasks": 20
                 }
             }
         ],
         
-        rules=[
-            {
-                "type": "PsychologicalSafetyRule",
-                "params": {
-                    "base_change_rate": 0.05,
-                }
-            },
-            {
-                "type": "ProductivityRule",
-                "params": {}
-            }
-        ],
+        rules=[],
         
         model_reporters={
             "Completed_Tasks": "len([t for t in m.tasks.values() if t.status.value == 'completed'])",
             "Active_Tasks": "len([t for t in m.tasks.values() if t.status.value == 'in_progress'])",
             "Backlog_Tasks": "len([t for t in m.tasks.values() if t.status.value == 'backlog'])",
             "Total_Tasks": "len(m.tasks)",
-            "Psychological_Safety": "m.psychological_safety",
-            "Average_PPS": "sum([getattr(a, 'perceived_psychological_safety', 0) for a in m.agents]) / len(m.agents) if m.agents else 0",
-            "Average_Knowledge": "sum([len(getattr(a, 'learned_knowledge', set())) for a in m.agents]) / len(m.agents) if m.agents else 0",
-            "Average_Team_Efficacy": "sum([getattr(a, 'perceived_team_efficacy', 0.5) for a in m.agents]) / len(m.agents) if m.agents else 0.5",
-            "Team_Efficacy_Std": "(__import__('statistics').stdev([getattr(a, 'perceived_team_efficacy', 0.5) for a in m.agents]) if len(m.agents) > 1 else 0.0)"
+            "Average_Knowledge": "sum([len(getattr(a, 'learned_knowledge', set())) for a in m.agents]) / len(m.agents) if m.agents else 0"
         },
         
         agent_reporters={
-            "PPS": "getattr(a, 'perceived_psychological_safety', None)",
             "Knowledge_Count": "len(getattr(a, 'learned_knowledge', set()))",
             "Current_Task": "getattr(a, 'current_task', None)",
             "Work_Efficiency": "getattr(a, 'work_efficiency', None)",
-            "Motivation": "getattr(a, 'motivation', None)",
-            "Perceived_Team_Efficacy": "getattr(a, 'perceived_team_efficacy', 0.5)"
+            "Motivation": "getattr(a, 'motivation', None)"
         }
     )
     
@@ -295,8 +256,6 @@ def create_engineering_config(
     
     # Add custom attributes
     config.__dict__['initial_tasks'] = initial_tasks
-    config.__dict__['psychological_safety'] = psychological_safety
-    config.__dict__['contributed_psychological_safety'] = contributed_psychological_safety
     config.__dict__['verbose'] = verbose
     
     return config
